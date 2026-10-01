@@ -6,7 +6,7 @@ to live Firebase Authentication + Realtime Database.
 
 ## How to run
 
-Requires Node.js 18+.
+Requires Node.js 18+
 
 ```bash
 cd frontend/mobile-app
