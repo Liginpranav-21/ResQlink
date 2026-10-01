@@ -1,0 +1,54 @@
+{
+  "expo": {
+    "name": "ResQLink",
+    "slug": "resqlink-mobile",
+    "version": "1.0.0",
+    "orientation": "portrait",
+    "scheme": "resqlink",
+    "userInterfaceStyle": "dark",
+    "splash": {
+      "backgroundColor": "#020617",
+      "resizeMode": "contain"
+    },
+    "assetBundlePatterns": [
+      "**/*"
+    ],
+    "ios": {
+      "supportsTablet": true,
+      "bundleIdentifier": "com.resqlink.mobile",
+      "infoPlist": {
+        "NSLocationWhenInUseUsageDescription": "ResQLink needs your location so emergency responders can find you when you send an SOS.",
+        "NSLocationAlwaysAndWhenInUseUsageDescription": "ResQLink uses your location to share with rescue teams during an emergency."
+      }
+    },
+    "android": {
+      "package": "com.resqlink.mobile",
+      "adaptiveIcon": {
+        "backgroundColor": "#020617"
+      },
+      "permissions": [
+        "ACCESS_FINE_LOCATION",
+        "ACCESS_COARSE_LOCATION",
+        "VIBRATE"
+      ]
+    },
+    "web": {
+      "bundler": "metro",
+      "output": "single",
+      "name": "ResQLink \u2014 Emergency Rescue",
+      "shortName": "ResQLink",
+      "themeColor": "#0A0B10",
+      "backgroundColor": "#0A0B10",
+      "favicon": "./public/favicon.png"
+    },
+    "plugins": [
+      [
+        "expo-location",
+        {
+          "locationAlwaysAndWhenInUsePermission": "ResQLink uses your location to share with rescue teams during an emergency."
+        }
+      ],
+      "expo-font"
+    ]
+  }
+}

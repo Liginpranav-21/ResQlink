@@ -1,0 +1,2511 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8"/>
+<meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1,user-scalable=no"/>
+<title>ResQLink — Emergency App</title>
+<script src="https://unpkg.com/react@18/umd/react.development.js"></script>
+<script src="https://unpkg.com/react-dom@18/umd/react-dom.development.js"></script>
+<script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
+<script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-app-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-auth-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-database-compat.js"></script>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&display=swap" rel="stylesheet"/>
+<style>
+*{box-sizing:border-box;margin:0;padding:0;-webkit-tap-highlight-color:transparent;}
+html,body,#root{height:100%;font-family:'Inter',system-ui,sans-serif;background:#07080A;color:#f1f5f9;-webkit-font-smoothing:antialiased;}
+body{background-image:linear-gradient(rgba(255,255,255,.02) 1px,transparent 1px),linear-gradient(90deg,rgba(255,255,255,.02) 1px,transparent 1px);background-size:28px 28px;}
+::-webkit-scrollbar{width:3px;} ::-webkit-scrollbar-track{background:transparent;} ::-webkit-scrollbar-thumb{background:#2E333B;border-radius:2px;}
+@keyframes spin{to{transform:rotate(360deg);}}
+@keyframes pulse{0%,100%{opacity:1;transform:scale(1);}50%{opacity:.6;transform:scale(.95);}}
+@keyframes sosPulse{0%{box-shadow:0 0 0 0 rgba(255,59,48,.7);}70%{box-shadow:0 0 0 30px rgba(255,59,48,0);}100%{box-shadow:0 0 0 0 rgba(255,59,48,0);}}
+@keyframes slideUp{from{transform:translateY(20px);opacity:0;}to{transform:translateY(0);opacity:1;}}
+@keyframes fadeIn{from{opacity:0;}to{opacity:1;}}
+@keyframes ripple{0%{transform:scale(0);opacity:.5;}100%{transform:scale(4);opacity:0;}}
+@keyframes blink{0%,100%{opacity:1;}50%{opacity:.3;}}
+.spin{animation:spin 1s linear infinite;}
+.pulse{animation:pulse 2s ease-in-out infinite;}
+.sos-pulse{animation:sosPulse 1.5s ease-out infinite;}
+.slide-up{animation:slideUp .3s ease-out;}
+.fade-in{animation:fadeIn .25s ease-out;}
+.blink{animation:blink 1s ease-in-out infinite;}
+@keyframes toastIn{from{transform:translateY(-16px);opacity:0;}to{transform:translateY(0);opacity:1;}}
+
+/* ─── Theme tokens ─────────────────────────────────────────────────────────
+   Default (dark). Light mode overrides applied via [data-theme="light"] on the
+   document root. Components read CSS vars where practical; JS THEME object
+   mirrors these for inline-computed colors. */
+:root,[data-theme="dark"]{
+  --bg:#07080A; --bg-grad-a:#101216; --bg-grad-b:#07080A;
+  --surface:#101216; --surface-2:#181B20; --border:#22252B; --border-2:#2E333B;
+  --text:#F0F1F3; --text-muted:#767C87; --text-dim:#2E333B; --text-soft:#A6ACB6;
+  --input-bg:#101216; --nav-bg:#101216;
+}
+[data-theme="light"]{
+  --bg:#F0F1F3; --bg-grad-a:#FFFFFF; --bg-grad-b:#F1F5F9;
+  --surface:#FFFFFF; --surface-2:#F1F5F9; --border:#E2E8F0; --border-2:#CBD5E1;
+  --text:#07080A; --text-muted:#767C87; --text-dim:#A6ACB6; --text-soft:#2E333B;
+  --input-bg:#F1F5F9; --nav-bg:#FFFFFF;
+}
+html,body,#root{background:var(--bg);color:var(--text);transition:background .2s ease,color .2s ease;}
+/* Toast container */
+#toast-root{position:fixed;top:0;left:0;right:0;z-index:1000;display:flex;flex-direction:column;align-items:center;gap:8px;padding:12px 16px 0;pointer-events:none;max-width:430px;margin:0 auto;}
+.toast{pointer-events:auto;min-width:200px;max-width:360px;padding:12px 16px;border-radius:12px;font-size:13px;font-weight:500;display:flex;align-items:center;gap:8px;box-shadow:0 8px 24px rgba(0,0,0,.35);animation:toastIn .25s ease-out;backdrop-filter:blur(8px);}
+.toast-success{background:rgba(16,185,129,.95);color:#fff;}
+.toast-error{background:rgba(255,59,48,.95);color:#fff;}
+.toast-info{background:rgba(59,130,246,.95);color:#fff;}
+.toast-warning{background:rgba(245,158,11,.95);color:#fff;}
+
+/* ResQAI Assistant Categories Grid */
+.ai-categories-grid {
+  display: flex;
+  overflow-x: auto;
+  gap: 8px;
+  padding-bottom: 8px;
+  scrollbar-width: thin;
+}
+.ai-category-chip {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 10px 14px;
+  border-radius: 9999px;
+  background-color: #1E293B;
+  border: 1px solid #22252B;
+  color: #A6ACB6;
+  font-size: 13px;
+  font-weight: 700;
+  cursor: pointer;
+  outline: none;
+  transition: all 0.2s ease-in-out;
+  height: 40px;
+  flex-shrink: 0;
+  width: 140px;
+}
+@media (min-width: 480px) {
+  .ai-categories-grid {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    overflow-x: visible;
+    padding-bottom: 0;
+  }
+  .ai-category-chip {
+    width: auto;
+  }
+}
+.ai-scroll-wrapper {
+  position: relative;
+}
+.ai-scroll-wrapper::after {
+  content: '';
+  position: absolute;
+  top: 0;
+  bottom: 8px;
+  right: 0;
+  width: 32px;
+  background: linear-gradient(to left, #101216, transparent);
+  pointer-events: none;
+  z-index: 2;
+}
+@media (min-width: 480px) {
+  .ai-scroll-wrapper::after {
+    display: none;
+  }
+}
+.ai-category-chip:hover {
+  transform: translateY(-2px);
+  border-color: #FF3B30;
+  box-shadow: 0 4px 12px rgba(255, 59, 48, 0.15);
+  color: #FFFFFF;
+}
+.ai-category-chip:active {
+  transform: scale(0.97);
+}
+.ai-view-all-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  color: #3FA9F5;
+  background: none;
+  border: none;
+  font-size: 13px;
+  font-weight: 800;
+  cursor: pointer;
+  outline: none;
+  margin-top: 14px;
+  float: right;
+  transition: all 0.2s ease-in-out;
+}
+.ai-view-all-btn:hover {
+  color: #adc6ff;
+  transform: translateX(3px);
+}
+</style>
+</head>
+<body>
+<div id="root"></div>
+<div id="toast-root"></div>
+<script type="text/babel">
+
+// ─── Firebase Config ───────────────────────────────────────────────────────
+const FIREBASE_CONFIG = {
+  apiKey: "AIzaSyBJLFqo5w9DY7G7ba2EQQirWK2Mg8G3rPA",
+  authDomain: "resqlink-862d5.firebaseapp.com",
+  databaseURL: "https://resqlink-862d5-default-rtdb.asia-southeast1.firebasedatabase.app",
+  projectId: "resqlink-862d5",
+  storageBucket: "resqlink-862d5.firebasestorage.app",
+  messagingSenderId: "63732427730",
+  appId: "1:63732427730:web:7df3dd00433d6133e8760b",
+  measurementId: "G-K7N5HGGGD0"
+};
+const DEMO_MODE = FIREBASE_CONFIG.apiKey === "PASTE_YOUR_API_KEY_HERE";
+let auth, db;
+if (!DEMO_MODE) {
+  const app = firebase.initializeApp(FIREBASE_CONFIG);
+  auth = firebase.auth();
+  db   = firebase.database();
+}
+
+// ─── Timeout helper ─────────────────────────────────────────────────────
+// PROBLEM THIS FIXES: signInWithEmailAndPassword / database .once('value')
+// calls have NO timeout. If the device has no internet, or a network
+// filter / browser extension / corporate proxy (e.g. Qualys) blocks
+// Firebase's auth or reCAPTCHA requests, these promises never resolve AND
+// never reject — they just hang forever. Since `loading` is only reset to
+// false in the `finally` block AFTER the await settles, the Sign In button
+// gets permanently stuck on "Processing…" with no error ever shown.
+//
+// withTimeout races the given promise against a timer so the UI always
+// recovers and the user sees an actionable error message.
+function withTimeout(promise, ms = 15000, message = 'Request timed out. Check your internet connection and try again.') {
+  return new Promise((resolve, reject) => {
+    const timer = setTimeout(() => reject(new Error(message)), ms);
+    promise.then(
+      (val) => { clearTimeout(timer); resolve(val); },
+      (err) => { clearTimeout(timer); reject(err); }
+    );
+  });
+}
+
+const {useState,useEffect,useRef,useCallback} = React;
+
+// ─── Emergency Data ────────────────────────────────────────────────────────
+const EMERGENCY_TYPES = [
+  {id:'snake_bite',     label:'Snake Bite',       icon:'🐍', color:'#10b981', severity:3, bg:'#064e3b'},
+  {id:'heart_attack',   label:'Heart Attack',     icon:'❤️', color:'#FF3B30', severity:3, bg:'#450a0a'},
+  {id:'heavy_bleeding', label:'Heavy Bleeding',   icon:'🩸', color:'#FF3B30', severity:3, bg:'#450a0a'},
+  {id:'fire',           label:'Fire',             icon:'🔥', color:'#f97316', severity:3, bg:'#431407'},
+  {id:'earthquake',     label:'Earthquake',       icon:'🌍', color:'#a16207', severity:3, bg:'#1c0d00'},
+  {id:'flood',          label:'Flood',            icon:'🌊', color:'#0ea5e9', severity:2, bg:'#0c1a2e'},
+  {id:'landslide',      label:'Landslide',        icon:'⛰️', color:'#a16207', severity:2, bg:'#1c1200'},
+  {id:'animal_attack',  label:'Animal Attack',    icon:'🐾', color:'#7c3aed', severity:2, bg:'#1e0a3c'},
+  {id:'fracture',       label:'Fracture',         icon:'🦴', color:'#767C87', severity:2, bg:'#101216'},
+  {id:'accident',       label:'Accident',         icon:'🚗', color:'#f59e0b', severity:2, bg:'#1c1200'},
+  {id:'lost_in_forest', label:'Lost in Forest',   icon:'🌲', color:'#16a34a', severity:1, bg:'#052e16'},
+  {id:'breathing_problem',label:'Breathing Issue',icon:'💨', color:'#06b6d4', severity:2, bg:'#0a2533'},
+];
+
+const FIRST_AID = {
+  snake_bite:['Keep calm — immobilize bitten limb below heart level','Remove watches/rings near bite site','Do NOT suck venom, cut wound, or apply ice','Rush to hospital immediately for antivenom'],
+  heart_attack:['Seat victim upright or semi-reclined — NOT lying flat','Loosen tight clothing around neck and chest','Give 325mg aspirin if conscious and not allergic','Begin CPR immediately if victim becomes unconscious'],
+  heavy_bleeding:['Apply firm continuous pressure with clean cloth','Elevate injured area above heart level if possible','Do not remove soaked cloth — add more layers on top','Apply tourniquet 5cm above wound if bleeding from a limb'],
+  fire:['Stop, Drop, and Roll if clothes are on fire','Cool burns with cool water for 10 minutes','Do not apply butter, toothpaste, or ice','Cover loosely with clean cling film or sterile dressing'],
+  flood:['Move immediately to highest ground available','Do not enter floodwater — even shallow water is dangerous','Avoid electrical equipment and power lines','Signal rescuers with bright cloth or phone torch'],
+  earthquake:['Drop, Cover your head/neck, Hold On to something sturdy','Stay away from windows, outer walls, and heavy furniture','If outdoors, move away from buildings and power lines','After shaking stops, check for injuries and gas leaks'],
+  landslide:['Evacuate immediately — move perpendicular to the slide path','If trapped, curl into a ball and protect your head','Cover mouth with cloth to avoid dust inhalation','Signal rescuers once safe — do not re-enter the slide zone'],
+  fracture:['Do not attempt to straighten or move the fractured bone','Immobilize with a splint using padded boards or sticks','Apply ice wrapped in cloth to reduce swelling','Keep victim still and seek medical attention immediately'],
+  lost_in_forest:['Stay in one place and activate SOS immediately','Use whistle (3 blasts = distress signal)','Build shelter, stay warm, conserve phone battery','Follow a stream downhill — it leads to civilization'],
+  animal_attack:['Back away slowly — do not run or make sudden movements','Make yourself appear large and make loud noise','If knocked down, protect your neck and vital organs','Apply pressure to wounds and seek immediate medical care'],
+  breathing_problem:['Sit victim upright — loosen any tight clothing','Use prescribed inhaler if available','Encourage slow, deep breaths and keep calm','Call emergency services immediately'],
+  accident:['Do not move victim unless in immediate danger','Call emergency services and keep victim conscious','Control bleeding with direct firm pressure','Keep victim warm and watch for signs of shock'],
+};
+
+const SOS_LEVELS = {
+  1:{label:'Minor Emergency',  desc:'Notify family & emergency contacts',    color:'#16a34a',bg:'rgba(22,163,74,.1)'},
+  2:{label:'Medical Emergency',desc:'Alert nearby rescue teams & hospitals', color:'#f59e0b',bg:'rgba(245,158,11,.1)'},
+  3:{label:'Critical Emergency',desc:'Full rescue — drones, teams & alerts', color:'#FF3B30',bg:'rgba(255,59,48,.1)'},
+};
+
+// ─── AI Emergency Response (simulated) ───────────────────────────────────
+const AI_RESPONSES = {
+  'snake bite': 'Immediate steps:\n1. Keep the victim calm — panic accelerates venom spread\n2. Immobilize the bitten limb below heart level\n3. Remove tight clothing/jewelry near the bite\n4. Do NOT suck venom, cut the wound, or apply a tourniquet\n5. Rush to nearest hospital for antivenom\n\n⏱ Time is critical — antivenom must be given within 4 hours.',
+  'heart attack': 'Immediate steps:\n1. Call emergency services NOW\n2. Seat victim upright — not lying flat\n3. Loosen tight clothing around chest and neck\n4. Give 325mg aspirin if available and not allergic\n5. Begin CPR if victim becomes unconscious\n\n💡 Every minute without CPR reduces survival by 10%.',
+  'bleeding': 'Immediate steps:\n1. Apply firm, continuous pressure with clean cloth\n2. Elevate the injured area above heart level\n3. Do NOT remove soaked cloth — add more layers\n4. Apply tourniquet 5cm above wound if on a limb\n5. Keep victim still and warm — treat for shock\n\n⚠️ If blood soaks through quickly, pressure is insufficient.',
+  'fracture': 'Immediate steps:\n1. Do NOT attempt to straighten the bone\n2. Immobilize with a splint — padded boards or sticks\n3. Apply ice wrapped in cloth to reduce swelling\n4. Keep victim still and comfortable\n5. Seek emergency medical care immediately\n\n💡 Open fractures (bone visible) are life-threatening — cover with clean cloth.',
+  'fire': 'Immediate steps:\n1. Stop, Drop, and Roll if clothes are on fire\n2. Cool burns with cool running water for 10 minutes\n3. Do NOT use ice, butter, or toothpaste\n4. Cover loosely with clean cling film or sterile dressing\n5. Seek immediate medical attention for large burns\n\n⚠️ For chemical burns, flush with water for 20+ minutes.',
+  'flood': 'Immediate steps:\n1. Move to highest ground immediately\n2. Do NOT enter floodwater — 15cm can knock you down\n3. Avoid electrical equipment and power lines\n4. Signal for help using bright cloth or phone torch\n5. Do not drive through flooded roads\n\n⚠️ Most flood deaths occur in vehicles.',
+  'lost': 'Immediate steps:\n1. STAY in one place — moving makes you harder to find\n2. Activate SOS signal immediately\n3. Blow 3 whistle blasts repeatedly (universal distress signal)\n4. Build shelter, stay warm, conserve phone battery\n5. If near a stream, follow it downhill\n\n💡 Leave markers — blazes on trees, rock arrows.',
+  'default': 'I\'m analyzing your situation. Please describe what happened:\n\n• What type of emergency is it?\n• Is anyone injured? How severely?\n• Can the victim walk or move?\n• Do you have any first aid supplies?\n• What is your current location?\n\nPress the SOS button above for immediate emergency dispatch.',
+};
+
+const getAIResponse = (msg) => {
+  const lower = msg.toLowerCase();
+  if (lower.includes('snake') || lower.includes('bite') || lower.includes('venom')) return AI_RESPONSES['snake bite'];
+  if (lower.includes('heart') || lower.includes('chest') || lower.includes('cardiac')) return AI_RESPONSES['heart attack'];
+  if (lower.includes('bleed') || lower.includes('blood') || lower.includes('cut') || lower.includes('wound')) return AI_RESPONSES['bleeding'];
+  if (lower.includes('fracture') || lower.includes('bone') || lower.includes('broken')) return AI_RESPONSES['fracture'];
+  if (lower.includes('fire') || lower.includes('burn')) return AI_RESPONSES['fire'];
+  if (lower.includes('flood') || lower.includes('water') || lower.includes('drown')) return AI_RESPONSES['flood'];
+  if (lower.includes('lost') || lower.includes('forest') || lower.includes('jungle') || lower.includes('stuck')) return AI_RESPONSES['lost'];
+  return AI_RESPONSES['default'];
+};
+
+// ─── Helpers ───────────────────────────────────────────────────────────────
+const timeAgo = (ts) => {
+  const d = Date.now()-ts, m=Math.floor(d/60000);
+  if(m<1)return'Just now';if(m<60)return`${m}m ago`;
+  const h=Math.floor(m/60);if(h<24)return`${h}h ago`;return`${Math.floor(h/24)}d ago`;
+};
+const genId = () => Math.random().toString(36).substr(2,9).toUpperCase();
+const mapsLink = (lat,lng) => `https://www.google.com/maps?q=${lat},${lng}`;
+const navLink  = (lat,lng) => `https://www.google.com/maps/dir/?api=1&destination=${lat},${lng}`;
+
+// ─── Distance / ETA (Haversine) ─────────────────────────────────────────────
+const haversineKm = (a,b) => {
+  if(!a||!b) return null;
+  const R=6371, toRad=d=>d*Math.PI/180;
+  const dLat=toRad(b.latitude-a.latitude), dLng=toRad(b.longitude-a.longitude);
+  const s=Math.sin(dLat/2)**2 + Math.cos(toRad(a.latitude))*Math.cos(toRad(b.latitude))*Math.sin(dLng/2)**2;
+  return R*2*Math.atan2(Math.sqrt(s),Math.sqrt(1-s));
+};
+const fmtDistance = (km) => km==null?'—':km<1?`${Math.round(km*1000)} m`:`${km.toFixed(1)} km`;
+// Rough ETA: assume 30 km/h average urban emergency response speed
+const etaMinutes = (km) => km==null?null:Math.max(1,Math.round((km/30)*60));
+const fmtEta = (km) => { const m=etaMinutes(km); return m==null?'—':m<60?`${m} min`:`${Math.floor(m/60)}h ${m%60}m`; };
+
+// ─── Theme system ───────────────────────────────────────────────────────────
+const THEME_TOKENS = {
+  dark: {
+    bg:'#07080A', gradA:'#101216', gradB:'#07080A', surface:'#101216', surface2:'#181B20',
+    border:'#22252B', border2:'#2E333B', text:'#F0F1F3', muted:'#767C87', dim:'#2E333B',
+    soft:'#A6ACB6', inputBg:'#101216',
+  },
+  light: {
+    bg:'#F0F1F3', gradA:'#FFFFFF', gradB:'#F1F5F9', surface:'#FFFFFF', surface2:'#F1F5F9',
+    border:'#E2E8F0', border2:'#CBD5E1', text:'#07080A', muted:'#767C87', dim:'#A6ACB6',
+    soft:'#2E333B', inputBg:'#F1F5F9',
+  },
+};
+const resolveTheme = (pref) => {
+  if(pref==='light'||pref==='dark') return pref;
+  // system
+  if(window.matchMedia && window.matchMedia('(prefers-color-scheme: light)').matches) return 'light';
+  return 'dark';
+};
+const applyTheme = (pref) => {
+  const resolved = resolveTheme(pref);
+  document.documentElement.setAttribute('data-theme', resolved);
+  return resolved;
+};
+// Theme context so any screen can read tokens + the current preference.
+const ThemeContext = React.createContext({ pref:'system', resolved:'dark', t:THEME_TOKENS.dark, setPref:()=>{} });
+const useTheme = () => React.useContext(ThemeContext);
+
+function ThemeProvider({ children }) {
+  const [pref,setPrefState] = useState(()=>{
+    try { return localStorage.getItem('resqlink-theme') || 'system'; } catch { return 'system'; }
+  });
+  const [resolved,setResolved] = useState(()=>resolveTheme(pref));
+
+  useEffect(()=>{
+    setResolved(applyTheme(pref));
+    try { localStorage.setItem('resqlink-theme', pref); } catch {}
+  },[pref]);
+
+  // React to OS theme changes when preference is "system"
+  useEffect(()=>{
+    if(pref!=='system' || !window.matchMedia) return;
+    const mq = window.matchMedia('(prefers-color-scheme: light)');
+    const handler = ()=> setResolved(applyTheme('system'));
+    mq.addEventListener?.('change', handler);
+    return ()=> mq.removeEventListener?.('change', handler);
+  },[pref]);
+
+  const setPref = (p) => setPrefState(p);
+  const t = THEME_TOKENS[resolved] || THEME_TOKENS.dark;
+  return <ThemeContext.Provider value={{pref,resolved,t,setPref}}>{children}</ThemeContext.Provider>;
+}
+
+// ─── Toast system ───────────────────────────────────────────────────────────
+const ToastContext = React.createContext({ toast:()=>{} });
+const useToast = () => React.useContext(ToastContext);
+function ToastProvider({ children }) {
+  const [toasts,setToasts] = useState([]);
+  const toast = useCallback((message, type='info', duration=3200) => {
+    const id = genId();
+    setToasts(ts=>[...ts,{id,message,type}]);
+    setTimeout(()=> setToasts(ts=>ts.filter(x=>x.id!==id)), duration);
+  },[]);
+  const icons = { success:'✓', error:'⚠️', info:'ℹ️', warning:'⚠️' };
+  return (
+    <ToastContext.Provider value={{toast}}>
+      {children}
+      {ReactDOM.createPortal(
+        toasts.map(x=>(
+          <div key={x.id} className={`toast toast-${x.type}`}>
+            <span>{icons[x.type]||'ℹ️'}</span><span>{x.message}</span>
+          </div>
+        )),
+        document.getElementById('toast-root')
+      )}
+    </ToastContext.Provider>
+  );
+}
+
+// ─── Network / online status ────────────────────────────────────────────────
+function useOnline() {
+  const [online,setOnline] = useState(navigator.onLine);
+  useEffect(()=>{
+    const on=()=>setOnline(true), off=()=>setOnline(false);
+    window.addEventListener('online',on); window.addEventListener('offline',off);
+    return ()=>{ window.removeEventListener('online',on); window.removeEventListener('offline',off); };
+  },[]);
+  return online;
+}
+
+// ─── Retry helper for DB writes ─────────────────────────────────────────────
+async function withRetry(fn, { retries=2, delay=800, label='operation' } = {}) {
+  let lastErr;
+  for(let i=0;i<=retries;i++){
+    try { return await fn(); }
+    catch(err){ lastErr=err; console.error(`[withRetry] ${label} attempt ${i+1} failed:`, err);
+      if(i<retries) await new Promise(r=>setTimeout(r, delay*(i+1))); }
+  }
+  throw lastErr;
+}
+
+// ─── RTDB Services ──────────────────────────────────────────────────────────
+// All mobile<->admin sync flows through these. RTDB onValue == real-time.
+const ProfileService = {
+  // Always fetch the freshest profile straight from RTDB (never cached state).
+  async fetchLatest(uid) {
+    if(DEMO_MODE || !uid) return null;
+    const snap = await withTimeout(db.ref('users/'+uid).once('value'), 10000, 'Loading your profile timed out.');
+    return snap.exists() ? snap.val() : null;
+  },
+  // Immediately persist any profile field change to RTDB.
+  async update(uid, patch) {
+    if(DEMO_MODE || !uid) return;
+    await withRetry(
+      ()=> withTimeout(
+        db.ref('users/'+uid).update({ ...patch, updatedAt:firebase.database.ServerValue.TIMESTAMP }),
+        10000, 'Saving your changes timed out.'
+      ),
+      { label:'profile update' }
+    );
+  },
+  subscribe(uid, cb) {
+    if(DEMO_MODE || !uid) return ()=>{};
+    const ref = db.ref('users/'+uid);
+    const handler = ref.on('value', s=> cb(s.exists()?s.val():null), e=>console.error('[ProfileService.subscribe]',e));
+    return ()=> ref.off('value', handler);
+  },
+};
+
+const NotificationService = {
+  async push(uid, notif) {
+    if(DEMO_MODE || !uid) return;
+    const id = genId();
+    await db.ref(`notifications/${uid}/${id}`).set({
+      id, read:false, createdAt:firebase.database.ServerValue.TIMESTAMP, ...notif,
+    }).catch(e=>console.error('[NotificationService.push]',e));
+  },
+  subscribe(uid, cb) {
+    if(DEMO_MODE || !uid) return ()=>{};
+    const ref = db.ref(`notifications/${uid}`);
+    const handler = ref.on('value', s=>{
+      const v=s.val()||{};
+      const list=Object.keys(v).map(k=>({id:k,...v[k]})).sort((a,b)=>(b.createdAt||0)-(a.createdAt||0));
+      cb(list);
+    }, e=>console.error('[NotificationService.subscribe]',e));
+    return ()=> ref.off('value', handler);
+  },
+  async markRead(uid, id) {
+    if(DEMO_MODE || !uid) return;
+    await db.ref(`notifications/${uid}/${id}`).update({read:true}).catch(()=>{});
+  },
+  async markAllRead(uid, list) {
+    if(DEMO_MODE || !uid) return;
+    const updates={}; list.forEach(n=>{ if(!n.read) updates[`${n.id}/read`]=true; });
+    if(Object.keys(updates).length) await db.ref(`notifications/${uid}`).update(updates).catch(()=>{});
+  },
+};
+
+const ActivityService = {
+  async log(action, detail, meta={}) {
+    if(DEMO_MODE) return;
+    const id=genId();
+    await db.ref('activity_logs/'+id).set({
+      id, action, detail, ...meta, createdAt:firebase.database.ServerValue.TIMESTAMP,
+    }).catch(e=>console.error('[ActivityService.log]',e));
+  },
+};
+
+const AlertService = {
+  // Notify all emergency contacts for an SOS; record delivery status per contact.
+  async notifyContacts(sos, contacts) {
+    if(DEMO_MODE) return [];
+    const results=[];
+    for(const c of (contacts||[])){
+      if(!c || !c.phone) continue;
+      const alertId = genId();
+      const link = sos.location ? mapsLink(sos.location.latitude, sos.location.longitude) : '';
+      // SMS / push / email are best-effort client-side; deliveryStatus reflects
+      // that the alert was queued. A backend function would flip these to 'sent'.
+      const record = {
+        alertId, sosId: sos.id, contactName: c.name||'Contact', contactPhone: c.phone,
+        deliveryStatus: 'queued',
+        channel: 'sms',
+        message: `🆘 EMERGENCY: ${sos.userName} needs help (${(sos.type||'').replace(/_/g,' ')}). Location: ${link} Time: ${new Date().toLocaleString()}`,
+        sentAt: firebase.database.ServerValue.TIMESTAMP,
+      };
+      try {
+        await db.ref('emergency_alerts/'+alertId).set(record);
+        results.push({ ...record, deliveryStatus:'queued' });
+      } catch(err){
+        console.error('[AlertService.notifyContacts]',err);
+        await db.ref('emergency_alerts/'+alertId).set({...record,deliveryStatus:'failed'}).catch(()=>{});
+        results.push({ ...record, deliveryStatus:'failed' });
+      }
+    }
+    return results;
+  },
+  // Open the device SMS composer as the SMS fallback channel.
+  smsHref(phone, body){ return `sms:${phone}${/iPhone|iPad|Mac/.test(navigator.userAgent)?'&':'?'}body=${encodeURIComponent(body)}`; },
+};
+
+// ─── Places Service (real nearby facilities from OpenStreetMap) ──────────────
+// Uses the free Overpass API (no API key) to find REAL hospitals and police
+// stations around the user's live GPS position. Results are de-duplicated,
+// distance-sorted, and (for hospitals) published to the `hospitals` RTDB node
+// so the admin dashboard sees the same GPS-relevant facilities.
+const OVERPASS_ENDPOINTS = [
+  'https://overpass-api.de/api/interpreter',
+  'https://overpass.kumi.systems/api/interpreter',
+];
+
+const PlacesService = {
+  // amenity: 'hospital' | 'police' | 'pharmacy' etc. radiusM in meters.
+  async fetchNearby(location, amenity, radiusM = 8000) {
+    if (!location) return [];
+    const { latitude: lat, longitude: lng } = location;
+    const query = `[out:json][timeout:20];(
+      node["amenity"="${amenity}"](around:${radiusM},${lat},${lng});
+      way["amenity"="${amenity}"](around:${radiusM},${lat},${lng});
+      relation["amenity"="${amenity}"](around:${radiusM},${lat},${lng});
+    );out center 40;`;
+
+    let lastErr;
+    for (const url of OVERPASS_ENDPOINTS) {
+      try {
+        const res = await withTimeout(
+          fetch(url + '?data=' + encodeURIComponent(query), { method: 'GET' }),
+          3000, 'Finding nearby facilities timed out.'
+        );
+        if (!res.ok) throw new Error('Overpass HTTP ' + res.status);
+        const json = await res.json();
+        const items = (json.elements || [])
+          .map((el) => {
+            const elat = el.lat ?? el.center?.lat;
+            const elng = el.lon ?? el.center?.lon;
+            if (elat == null || elng == null) return null;
+            const tags = el.tags || {};
+            const name = tags.name || tags['name:en'] || (amenity === 'police' ? 'Police Station' : 'Hospital');
+            const phone = tags.phone || tags['contact:phone'] || tags['contact:mobile'] || '';
+            const isPrivate = (tags.healthcare || tags.operator_type || '').toLowerCase().includes('priv');
+            const isGov = (tags.operator_type || tags.operator || '').toLowerCase().includes('gov')
+              || (tags.operator || '').toLowerCase().includes('government');
+            return {
+              id: String(el.id),
+              name,
+              phone,
+              latitude: elat,
+              longitude: elng,
+              type: amenity === 'police' ? 'Police' : isGov ? 'Government' : isPrivate ? 'Private' : 'Hospital',
+              address: [tags['addr:street'], tags['addr:city']].filter(Boolean).join(', '),
+              source: 'osm',
+            };
+          })
+          .filter(Boolean);
+
+        // De-duplicate by name+rounded coords.
+        const seen = new Set();
+        const deduped = items.filter((it) => {
+          const k = `${it.name}|${it.latitude.toFixed(4)}|${it.longitude.toFixed(4)}`;
+          if (seen.has(k)) return false;
+          seen.add(k);
+          return true;
+        });
+        return deduped;
+      } catch (err) {
+        lastErr = err;
+        console.error('[PlacesService.fetchNearby]', url, err);
+      }
+    }
+    throw lastErr || new Error('Could not reach the places service.');
+  },
+
+  // Publish discovered hospitals to RTDB so the admin dashboard shows them.
+  async publishHospitals(hospitals, reporter) {
+    if (DEMO_MODE || !hospitals?.length) return;
+    const updates = {};
+    hospitals.slice(0, 25).forEach((h) => {
+      // Stable key from OSM id so repeated publishes upsert rather than duplicate.
+      const key = `osm_${h.id}`;
+      updates[key] = {
+        id: key,
+        name: h.name,
+        address: h.address || '',
+        phone: h.phone || '',
+        type: (h.type || 'hospital').toLowerCase(),
+        location: { latitude: h.latitude, longitude: h.longitude, timestamp: Date.now() },
+        isOpen: true,
+        source: 'osm',
+        reportedBy: reporter || 'mobile',
+        updatedAt: firebase.database.ServerValue.TIMESTAMP,
+      };
+    });
+    try {
+      await db.ref('hospitals').update(updates);
+    } catch (err) {
+      console.error('[PlacesService.publishHospitals]', err);
+    }
+  },
+};
+
+// ─── Back Button ───────────────────────────────────────────────────────────
+function BackButton({onBack, label}) {
+  return (
+    <button onClick={onBack}
+      style={{
+        position:'absolute',top:12,left:12,zIndex:300,
+        display:'flex',alignItems:'center',gap:5,
+        background:'rgba(15,23,42,0.82)',
+        border:'1px solid rgba(255,255,255,0.14)',
+        backdropFilter:'blur(10px)',WebkitBackdropFilter:'blur(10px)',
+        color:'#e2e8f0',fontSize:13,fontWeight:500,
+        padding:'7px 13px 7px 9px',borderRadius:22,cursor:'pointer',
+        boxShadow:'0 2px 12px rgba(0,0,0,0.4)',transition:'all .15s'
+      }}>
+      <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
+        <polyline points="15 18 9 12 15 6"/>
+      </svg>
+      <span>{label||'Back'}</span>
+    </button>
+  );
+}
+
+// ─── Bottom Nav ────────────────────────────────────────────────────────────
+const TABS = [
+  {key:'home',    icon:'🏠', label:'Home'},
+  {key:'emergency',icon:'⚠️',label:'Emergency'},
+  {key:'sos',     icon:'🆘', label:'SOS'},
+  {key:'ai',      icon:'🤖', label:'ResQAI'},
+  {key:'profile', icon:'👤', label:'Profile'},
+];
+
+function BottomNav({tab, setTab, sosActive, sosLevel}) {
+  const lvl = SOS_LEVELS[sosLevel] || SOS_LEVELS[3];
+  const activeColor = lvl.color;
+  return (
+    <nav style={{position:'fixed',bottom:0,left:0,right:0,background:'#101216',borderTop:'1px solid #181B20',display:'flex',zIndex:100,paddingBottom:'env(safe-area-inset-bottom,0)'}}>
+      {TABS.map(t=>{
+        const active = tab===t.key;
+        const isSOS = t.key==='sos';
+        return (
+          <button key={t.key} onClick={()=>setTab(t.key)}
+            style={{flex:1,padding:isSOS?'6px 0 10px':'8px 0 10px',display:'flex',flexDirection:'column',alignItems:'center',gap:3,border:'none',background:'transparent',cursor:'pointer',position:'relative'}}>
+            {isSOS
+              ? <div style={{width:52,height:52,borderRadius:'50%',background:sosActive?activeColor:'#991b1b',display:'flex',alignItems:'center',justifyContent:'center',fontSize:22,marginTop:-20,border:'3px solid #07080A',boxShadow:sosActive?`0 0 20px ${activeColor}99`:'none',transition:'all .3s'}}>
+                  {t.icon}
+                </div>
+              : <span style={{fontSize:20,opacity:active?1:.55,filter:active?'saturate(1)':'grayscale(.4)'}}>{t.icon}</span>
+            }
+            {!isSOS && <span style={{fontSize:10,color:active?'#FF8A1E':'#767C87',fontWeight:active?700:500}}>{t.label}</span>}
+          </button>
+        );
+      })}
+    </nav>
+  );
+}
+
+// ─── Splash Screen ─────────────────────────────────────────────────────────
+function SplashScreen({onStart}) {
+  const [show, setShow] = useState(false);
+  useEffect(()=>{setTimeout(()=>setShow(true),200);},[]);
+  return (
+    <div style={{minHeight:'100vh',background:'linear-gradient(160deg,#07080A 0%,#0c071a 50%,#150303 100%)',display:'flex',flexDirection:'column',alignItems:'center',justifyContent:'center',padding:32,position:'relative',overflow:'hidden'}}>
+      {/* Background ambient glows */}
+      <div style={{position:'absolute',width:350,height:350,borderRadius:'50%',background:'rgba(255,59,48,0.035)',top:'20%',left:'50%',transform:'translate(-50%,-50%)',filter:'blur(50px)',pointerEvents:'none'}}/>
+      <div style={{position:'absolute',width:400,height:400,borderRadius:'50%',background:'rgba(99,102,241,0.025)',bottom:'10%',left:'50%',transform:'translate(-50%,50%)',filter:'blur(60px)',pointerEvents:'none'}}/>
+
+      {show && <>
+        <div className="fade-in" style={{textAlign:'center',marginBottom:40,zIndex:1}}>
+          {/* Double ring logo */}
+          <div style={{width:130,height:130,borderRadius:'50%',border:'1px solid rgba(255,59,48,0.08)',display:'flex',alignItems:'center',justifyContent:'center',margin:'0 auto 24px'}}>
+            <div style={{width:106,height:106,borderRadius:'50%',border:'1px solid rgba(255,59,48,0.16)',display:'flex',alignItems:'center',justifyContent:'center'}}>
+              <div style={{width:80,height:80,borderRadius:'50%',background:'linear-gradient(135deg,#FF3B30,#D32F2F)',display:'flex',alignItems:'center',justifyContent:'center',fontSize:38,boxShadow:'0 8px 30px rgba(255,59,48,.45)'}}>🚨</div>
+            </div>
+          </div>
+          <h1 style={{fontSize:38,fontWeight:900,color:'#f1f5f9',letterSpacing:0.8,marginBottom:8}}>ResQLink</h1>
+          <p style={{color:'#94a3b8',fontSize:13,fontWeight:600,letterSpacing:0.5,opacity:0.9}}>"Connecting Help When Networks Fail"</p>
+        </div>
+        <div className="fade-in" style={{width:'100%',maxWidth:320,display:'flex',flexDirection:'column',gap:12,animationDelay:'.2s',zIndex:1}}>
+          <button onClick={onStart}
+            style={{width:'100%',padding:'16px',borderRadius:24,background:'linear-gradient(135deg,#FF3B30,#D32F2F)',border:'none',color:'#fff',fontSize:16,fontWeight:700,cursor:'pointer',boxShadow:'0 8px 32px rgba(255,59,48,.4)',letterSpacing:0.5,transition:'all 0.2s'}}>
+            Get Started
+          </button>
+          <div style={{textAlign:'center',padding:'12px',borderRadius:16,background:'rgba(255,59,48,.05)',border:'1px solid rgba(255,59,48,.18)',fontSize:12,color:'#f87171',fontWeight:600,letterSpacing:0.3}}>
+            ⚡ Emergency Mode — Tap SOS anytime
+          </div>
+        </div>
+        <div className="fade-in" style={{marginTop:48,display:'grid',gridTemplateColumns:'1fr 1fr',gap:12,width:'100%',maxWidth:320,animationDelay:'.3s',zIndex:1}}>
+          {[['🚨','Smart SOS'],['🤖','AI Assistant'],['📍','GPS Tracking'],['🚁','Drone Support']].map(([ic,lb])=>(
+            <div key={lb} style={{display:'flex',alignItems:'center',gap:8,padding:'12px 14px',borderRadius:16,background:'rgba(255,255,255,.02)',border:'1px solid rgba(255,255,255,.05)',fontSize:12,color:'#94a3b8',fontWeight:500}}>
+              <span style={{fontSize:16}}>{ic}</span><span>{lb}</span>
+            </div>
+          ))}
+        </div>
+      </>}
+    </div>
+  );
+}
+
+// ─── Auth Screen ───────────────────────────────────────────────────────────
+function AuthScreen({onAuth}) {
+  const { t, resolved } = useTheme();
+  const [mode,setMode] = useState('login');
+  const [email,setEmail] = useState('');
+  const [password,setPassword] = useState('');
+  const [name,setName] = useState('');
+  const [phone,setPhone] = useState('');
+  const [loading,setLoading] = useState(false);
+  const [error,setError] = useState('');
+  const [success,setSuccess] = useState('');
+
+  const inp = {
+    width: '100%',
+    background: resolved === 'dark' ? '#0F172A' : '#F1F5F9',
+    border: `1px solid ${resolved === 'dark' ? 'rgba(255, 255, 255, 0.08)' : '#E2E8F0'}`,
+    borderRadius: 16,
+    padding: '13px 16px',
+    color: t.text,
+    fontSize: 14,
+    outline: 'none',
+    marginBottom: 12,
+    fontFamily: 'inherit'
+  };
+
+  const handle = async(e) => {
+    e.preventDefault(); setError(''); setSuccess(''); setLoading(true);
+    try {
+      if(DEMO_MODE) {
+        await new Promise(r=>setTimeout(r,700));
+        onAuth({uid:'demo-user-'+Date.now(),email:email||'user@demo.com',displayName:name||'Demo User',role:'user',phone});
+        return;
+      }
+      if(mode==='login') {
+        const c = await withTimeout(auth.signInWithEmailAndPassword(email,password), 15000, 'Sign-in timed out. Check your internet connection (or any VPN/security app that may be blocking Google services) and try again.');
+        const snap = await withTimeout(db.ref('users/' + c.user.uid).once('value'), 10000, 'Connected, but loading your profile timed out. Please try again.');
+        const d = snap.exists()?snap.val():{};
+        onAuth({uid:c.user.uid,email:c.user.email,displayName:d.displayName||'User',role:d.role||'user',phone:d.phone||'',
+          address:d.address||'',bloodGroup:d.bloodGroup||'O+',medicalInfo:d.medicalInfo||'',emergencyContacts:d.emergencyContacts||[],theme:d.theme||'system'});
+      } else if(mode==='register') {
+        const c = await withTimeout(auth.createUserWithEmailAndPassword(email,password), 15000, 'Sign-up timed out. Check your internet connection (or any VPN/security app that may be blocking Google services) and try again.');
+        const userData = {uid:c.user.uid,email,displayName:name,role:'user',phone,address:'',bloodGroup:'O+',medicalInfo:'',emergencyContacts:[],theme:'system',createdAt:firebase.database.ServerValue.TIMESTAMP};
+        await withTimeout(db.ref('users/' + c.user.uid).set(userData), 10000, 'Account created, but saving your profile timed out. Please try signing in.');
+        onAuth({uid:c.user.uid,email,displayName:name,role:'user',phone,address:'',bloodGroup:'O+',medicalInfo:'',emergencyContacts:[],theme:'system'});
+      } else {
+        await withTimeout(auth.sendPasswordResetEmail(email), 15000, 'Request timed out. Check your internet connection and try again.');
+        setSuccess('Password reset email sent!');
+      }
+    } catch(err) {
+      setError(err.message?.replace('Firebase: ','')?.replace(/\(auth[^)]+\)/,'').trim()||'Error occurred');
+    } finally { setLoading(false); }
+  };
+
+  return (
+    <div style={{minHeight:'100vh',background:'#07080A',display:'flex',flexDirection:'column'}}>
+      <div style={{background:'#07080A',padding:'48px 24px 24px',textAlign:'center'}}>
+        <div style={{width:90,height:90,borderRadius:'50%',border:'1px solid rgba(255,59,48,0.08)',display:'flex',alignItems:'center',justifyContent:'center',margin:'0 auto 16px'}}>
+          <div style={{width:72,height:72,borderRadius:'50%',border:'1px solid rgba(255,59,48,0.18)',display:'flex',alignItems:'center',justifyContent:'center'}}>
+            <div style={{width:54,height:54,borderRadius:'50%',background:'linear-gradient(135deg,#FF3B30,#D32F2F)',display:'flex',alignItems:'center',justifyContent:'center',fontSize:24,boxShadow:'0 6px 20px rgba(255,59,48,.35)'}}>🚨</div>
+          </div>
+        </div>
+        <h2 style={{color:'#F0F1F3',fontSize:24,fontWeight:900,letterSpacing:0.5}}>ResQLink</h2>
+        <p style={{color:'#767C87',fontSize:13,marginTop:4,fontWeight:600}}>Emergency Rescue Network</p>
+      </div>
+
+      <div style={{flex:1,padding:'24px 20px',overflowY:'auto'}}>
+        <div style={{
+          background: resolved === 'dark' ? '#101216' : '#FFFFFF',
+          borderRadius: 24,
+          border: `1px solid ${resolved === 'dark' ? '#1E293B' : '#E2E8F0'}`,
+          padding: 24,
+          boxShadow: resolved === 'dark' ? '0 12px 30px rgba(0,0,0,0.25)' : '0 8px 24px rgba(0,0,0,0.06)'
+        }}>
+          <h3 style={{color:t.text,fontSize:18,fontWeight:700,marginBottom:4}}>
+            {mode==='login'?'Sign In':mode==='register'?'Create Account':'Reset Password'}
+          </h3>
+          <p style={{color:t.soft,fontSize:13,marginBottom:20}}>{mode==='login'?'Access your emergency profile':mode==='register'?'Join the ResQLink network':'Enter your email'}</p>
+
+          {error&&<div style={{padding:'10px 14px',background:'rgba(255,59,48,.1)',border:'1px solid rgba(255,59,48,.3)',borderRadius:12,color:'#f87171',fontSize:13,marginBottom:16}}>⚠️ {error}</div>}
+          {success&&<div style={{padding:'10px 14px',background:'rgba(16,185,129,.1)',border:'1px solid rgba(16,185,129,.3)',borderRadius:12,color:'#34d399',fontSize:13,marginBottom:16}}>✓ {success}</div>}
+
+          <form onSubmit={handle}>
+            {mode==='register'&&<input type="text" required value={name} onChange={e=>setName(e.target.value)} placeholder="Full Name" style={inp}/>}
+            <input type="email" required value={email} onChange={e=>setEmail(e.target.value)} placeholder="Email Address" style={inp}/>
+            {mode==='register'&&<input type="tel" value={phone} onChange={e=>setPhone(e.target.value)} placeholder="Phone Number (optional)" style={inp}/>}
+            {mode!=='reset'&&<input type="password" required value={password} onChange={e=>setPassword(e.target.value)} placeholder="Password" minLength={6} style={inp}/>}
+            <button type="submit" disabled={loading}
+              style={{width:'100%',padding:'15px',borderRadius:16,background:'linear-gradient(135deg,#FF3B30,#D32F2F)',border:'none',color:'#fff',fontSize:15,fontWeight:700,cursor:'pointer',opacity:loading?.6:1,marginBottom:16,letterSpacing:.3}}>
+              {loading?'Processing…':mode==='login'?'Sign In →':mode==='register'?'Create Account →':'Send Reset Email'}
+            </button>
+          </form>
+
+          {mode==='login'&&<>
+            <button onClick={()=>setMode('register')} style={{width:'100%',padding:'12px',borderRadius:16,background:'rgba(255,255,255,.02)',border:`1px solid ${resolved === 'dark' ? 'rgba(255, 255, 255, 0.08)' : '#E2E8F0'}`,color:t.soft,fontSize:14,cursor:'pointer',marginBottom:8}}>
+              New user? Create Account
+            </button>
+            <button onClick={()=>setMode('reset')} style={{width:'100%',padding:'10px',border:'none',background:'transparent',color:t.muted,fontSize:13,cursor:'pointer'}}>Forgot password?</button>
+          </>}
+          {mode!=='login'&&<button onClick={()=>setMode('login')} style={{width:'100%',padding:'10px',border:'none',background:'transparent',color:t.muted,fontSize:13,cursor:'pointer'}}>← Back to Sign In</button>}
+
+          {DEMO_MODE&&<div style={{marginTop:16,padding:'10px 14px',background:'rgba(245,158,11,.08)',border:'1px solid rgba(245,158,11,.2)',borderRadius:12,fontSize:12,color:'#fbbf24',textAlign:'center'}}>
+            ⚡ Demo Mode — any email/password works
+          </div>}
+        </div>
+      </div>
+    </div>
+  );
+}
+
+// ─── Home Dashboard ────────────────────────────────────────────────────────
+function HomeScreen({user,location,gpsStatus,sosActive,setSosActive,setTab,emergencyHistory,unreadCount=0}) {
+  const {t, resolved} = useTheme();
+  const [bleActive,setBleActive] = useState(false);
+  const active = emergencyHistory.filter(e=>e.status==='active'||e.status==='assigned').length;
+
+  const gpsColor = gpsStatus==='active'?'#34d399':gpsStatus==='denied'?'#fbbf24':'#767C87';
+
+  return (
+    <div style={{height:'100%',overflowY:'auto',position:'relative',backgroundColor:'#07080A'}}>
+      <OfflineBanner />
+      <div style={{padding:'20px 20px 90px'}}>
+        
+        {/* Header Greeting */}
+        <div style={{display:'flex',alignItems:'center',gap:12,marginBottom:20,marginTop:10}}>
+          <div style={{width:44,height:44,borderRadius:'50%',backgroundColor:'#1E293B',border:'1px solid #22252B',display:'flex',alignItems:'center',justifyContent:'center',color:'#F0F1F3',fontSize:18,fontWeight:'800',flexShrink:0}}>
+            {(user?.displayName || 'U').charAt(0).toUpperCase()}
+          </div>
+          <div style={{flex:1}}>
+            <p style={{color:'#A6ACB6',fontSize:12,fontWeight:'600',margin:0}}>Good Morning 👋, {user?.displayName?.split(' ')[0] || 'User'}</p>
+            <h2 style={{color:'#F0F1F3',fontSize:16,fontWeight:'800',marginTop:2,margin:0}}>Stay Safe. Every Second Counts.</h2>
+          </div>
+          <button onClick={()=>setTab('notifications')} style={{position:'relative',width:40,height:40,borderRadius:'50%',backgroundColor:'#101216',border:'1px solid #1E293B',display:'flex',alignItems:'center',justifyContent:'center',cursor:'pointer',outline:'none'}}>
+            <span style={{fontSize:20}}>🔔</span>
+            <div style={{position:'absolute',top:10,right:11,width:8,height:8,borderRadius:'50%',backgroundColor:'#FF3B30'}}/>
+          </button>
+        </div>
+
+        {/* Indicators row */}
+        <div style={{display:'flex',justifyContent:'space-between',marginBottom:20,padding:'0 4px'}}>
+          {[
+            {label:'GPS', color: gpsColor},
+            {label:'INTERNET', color:'#34d399'},
+            {label:'ADMIN', color:'#34d399'},
+            {label:'FIREBASE', color:'#34d399'},
+            {label:'SAT/SMS', color:'#a78bfa'},
+          ].map(ind=>(
+            <div key={ind.label} style={{display:'flex',alignItems:'center',gap:6}}>
+              <div style={{width:6,height:6,borderRadius:'50%',backgroundColor:ind.color}}/>
+              <span style={{color:'#A6ACB6',fontSize:9,fontWeight:'700',letterSpacing:'0.3px'}}>{ind.label}</span>
+            </div>
+          ))}
+        </div>
+
+        {/* Map & SOS Beacon section */}
+        <div style={{height:310,borderRadius:24,backgroundColor:'#070B14',border:'1px solid #1E293B',display:'flex',flexDirection:'column',alignItems:'center',justifyContent:'center',position:'relative',overflow:'hidden',marginBottom:20}}>
+          {/* Grid lines */}
+          <div style={{position:'absolute',width:'100%',height:1,backgroundColor:'rgba(255,255,255,0.03)',top:'30%',pointerEvents:'none'}}/>
+          <div style={{position:'absolute',width:'100%',height:1,backgroundColor:'rgba(255,255,255,0.03)',top:'65%',pointerEvents:'none'}}/>
+          <div style={{position:'absolute',width:1,height:'100%',backgroundColor:'rgba(255,255,255,0.03)',left:'45%',pointerEvents:'none'}}/>
+          {/* Radar rings */}
+          <div style={{position:'absolute',width:160,height:160,borderRadius:'50%',border:'1px solid rgba(255, 59, 48, 0.05)',pointerEvents:'none'}}/>
+          <div style={{position:'absolute',width:240,height:240,borderRadius:'50%',border:'1px solid rgba(255, 59, 48, 0.03)',pointerEvents:'none'}}/>
+          <div style={{position:'absolute',width:320,height:320,borderRadius:'50%',border:'1px solid rgba(255, 59, 48, 0.01)',pointerEvents:'none'}}/>
+
+          {/* Central Beacon */}
+          <button onClick={()=>setTab('sos')} style={{width:190,height:190,borderRadius:'50%',border:'1px solid rgba(255, 59, 48, 0.08)',backgroundColor:'transparent',display:'flex',alignItems:'center',justifyContent:'center',marginBottom:12,cursor:'pointer',outline:'none'}}>
+            <div style={{width:160,height:160,borderRadius:'50%',border:'1.5px solid rgba(255, 59, 48, 0.2)',display:'flex',alignItems:'center',justifyContent:'center'}}>
+              <div style={{width:130,height:130,borderRadius:'50%',backgroundColor:'#FF3B30',display:'flex',flexDirection:'column',alignItems:'center',justifyContent:'center',boxShadow:'0 12px 30px rgba(255, 59, 48, 0.5)'}}>
+                <span style={{color:'#FFFFFF',fontSize:54,fontWeight:'300',lineHeight:'54px',marginTop:8}}>*</span>
+                <span style={{color:'#FFFFFF',fontSize:14,fontWeight:'800',letterSpacing:1,marginTop:-8}}>sos</span>
+              </div>
+            </div>
+          </button>
+
+          {/* press beacon pill */}
+          <div style={{padding:'8px 16px',borderRadius:20,backgroundColor:'rgba(255,255,255,0.03)',border:'1px solid rgba(255,255,255,0.06)',color:'#A6ACB6',fontSize:10,fontWeight:'800',letterSpacing:1}}>
+            PRESS & HOLD BEACON
+          </div>
+        </div>
+
+        {/* Weather & Flood Alert row */}
+        <div style={{display:'flex',gap:12,marginBottom:20}}>
+          <div style={{flex:1,padding:12,borderRadius:20,backgroundColor:'#101216',border:'1px solid #1E293B',display:'flex',alignItems:'center',gap:10}}>
+            <div style={{width:40,height:40,borderRadius:12,backgroundColor:'rgba(59, 130, 246, 0.15)',display:'flex',alignItems:'center',justifyContent:'center',fontSize:20}}>🌧️</div>
+            <div>
+              <p style={{color:'#F0F1F3',fontSize:15,fontWeight:'800',margin:0}}>31°C</p>
+              <p style={{color:'#64748B',fontSize:11,fontWeight:'600',margin:0}}>Heavy Rain</p>
+            </div>
+          </div>
+          <div style={{flex:1,padding:12,borderRadius:20,backgroundColor:'#101216',border:'1px solid #1E293B',display:'flex',alignItems:'center',gap:10}}>
+            <div style={{width:40,height:40,borderRadius:12,backgroundColor:'rgba(239, 68, 68, 0.15)',display:'flex',alignItems:'center',justifyContent:'center',fontSize:20}}>🏠</div>
+            <div>
+              <p style={{color:'#EF4444',fontSize:15,fontWeight:'800',margin:0}}>HIGH RISK</p>
+              <p style={{color:'#64748B',fontSize:11,fontWeight:'600',margin:0}}>Flood Alert</p>
+            </div>
+          </div>
+        </div>
+
+        {/* ResQAI Assistant Card */}
+        <div style={{padding:16,borderRadius:24,backgroundColor:'#101216',border:'1px solid #1E293B',marginBottom:20}}>
+          <div style={{display:'flex',alignItems:'center',gap:12,marginBottom:12}}>
+            <div style={{width:40,height:40,borderRadius:12,backgroundColor:'rgba(124, 58, 237, 0.15)',display:'flex',alignItems:'center',justifyContent:'center',fontSize:20}}>🤖</div>
+            <div>
+              <p style={{color:'#F0F1F3',fontSize:14,fontWeight:'800',margin:0}}>ResQAI Assistant</p>
+              <p style={{color:'#64748B',fontSize:11,fontWeight:'600',margin:0}}>Instant emergency guidance</p>
+            </div>
+          </div>
+          
+          <div style={{height:1,backgroundColor:'#1E293B',margin:'12px 0'}} />
+
+          <div className="ai-scroll-wrapper">
+            <div className="ai-categories-grid">
+              {[
+                { id: 'heart_attack',     label: 'Heart Attack',     icon: '🫀' },
+                { id: 'fracture',         label: 'Fracture',         icon: '🦴' },
+                { id: 'snake_bite',       label: 'Snake Bite',       icon: '🐍' },
+                { id: 'animal_attack',    label: 'Animal Attack',    icon: '🐕' },
+                { id: 'fire',             label: 'Fire',             icon: '🔥' },
+                { id: 'accident',         label: 'Road Accident',    icon: '🚗' },
+                { id: 'breathing_problem',label: 'Electric Shock',   icon: '⚡' },
+                { id: 'heavy_bleeding',   label: 'Severe Bleeding',  icon: '🩸' },
+                { id: 'flood',            label: 'Flood',            icon: '🌊' },
+                { id: 'landslide',        label: 'Landslide',        icon: '⛰️' },
+                { id: 'earthquake',       label: 'Cyclone',          icon: '🌪️' },
+                { id: 'lost_in_forest',   label: 'Poisoning',        icon: '☠️' },
+              ].map(cat => (
+                <button key={cat.id} className="ai-category-chip" onClick={() => setTab(cat.id)}>
+                  <span>{cat.icon}</span> <span>{cat.label}</span>
+                </button>
+              ))}
+            </div>
+          </div>
+
+          <div style={{display:'flex',justifyContent:'flex-end',marginTop:6}}>
+            <button className="ai-view-all-btn" onClick={() => setTab('emergency')}>
+              View All &rarr;
+            </button>
+          </div>
+        </div>
+
+        {/* Nearby Services Header */}
+        <div style={{display:'flex',justifyContent:'space-between',alignItems:'center',marginBottom:12}}>
+          <span style={{color:'#F0F1F3',fontSize:13,fontWeight:'800',textTransform:'uppercase',letterSpacing:1}}>Nearby Services</span>
+          <span onClick={()=>setTab('nearby')} style={{color:'#FF3B30',fontSize:12,fontWeight:'700',cursor:'pointer'}}>View Map</span>
+        </div>
+
+        {/* Nearby Services Grid */}
+        <div style={{display:'grid',gridTemplateColumns:'repeat(3, 1fr)',gap:10,marginBottom:20}}>
+          {[
+            { label: 'AMBULANCE', icon: '🚑', color: '#3B82F6', action: () => setTab('nearby') },
+            { label: 'HOSPITAL', icon: '🏥', color: '#2FD67C', action: () => setTab('nearby') },
+            { label: 'POLICE', icon: '👮', color: '#6366F1', action: () => setTab('nearby') },
+            { label: 'FIRE', icon: '🚒', color: '#F97316', action: () => setTab('emergency') },
+            { label: 'BLOOD BANK', icon: '🩸', color: '#EF4444', action: () => setTab('emergency') },
+            { label: 'SHELTER', icon: '🏠', color: '#A78BFA', action: () => setTab('emergency') },
+          ].map((service, idx) => (
+            <div key={idx} onClick={service.action} style={{borderRadius:20,border:`1px solid ${service.color}`,backgroundColor:'#101216',display:'flex',flexDirection:'column',alignItems:'center',justifyContent:'center',padding:8,cursor:'pointer'}}>
+              <div style={{width:48,height:48,borderRadius:14,backgroundColor:`${service.color}15`,display:'flex',alignItems:'center',justifyContent:'center',marginBottom:8}}>
+                <span style={{fontSize:24}}>{service.icon}</span>
+              </div>
+              <span style={{color:'#A6ACB6',fontSize:9,fontWeight:'800',letterSpacing:'0.3px',textAlign:'center'}}>{service.label}</span>
+            </div>
+          ))}
+        </div>
+
+        {/* Emergency Tip */}
+        <div style={{padding:16,borderRadius:24,backgroundColor:'#101216',border:'1px solid #D97706',marginBottom:20}}>
+          <div style={{display:'flex',gap:12,alignItems:'center'}}>
+            <div style={{width:40,height:40,borderRadius:12,backgroundColor:'rgba(217, 119, 6, 0.15)',display:'flex',alignItems:'center',justifyContent:'center',fontSize:20}}>💡</div>
+            <div style={{flex:1}}>
+              <p style={{color:'#D97706',fontSize:10,fontWeight:'800',letterSpacing:1,margin:0}}>EMERGENCY TIP</p>
+              <p style={{color:'#A6ACB6',fontSize:12,fontWeight:'600',marginTop:2,lineHeight:'16px',margin:0}}>Earthquake? Stay away from windows and find cover.</p>
+            </div>
+          </div>
+        </div>
+
+      </div>
+
+      {/* Floating 112 Phone Button */}
+      <a href="tel:112" style={{position:'absolute',bottom:80,right:20,width:60,height:60,borderRadius:'50%',backgroundColor:'#FFFFFF',display:'flex',flexDirection:'column',alignItems:'center',justifyContent:'center',boxShadow:'0 8px 16px rgba(0,0,0,0.25)',zIndex:99,textDecoration:'none',color:'#07080A'}}>
+        <span style={{fontSize:22}}>📞</span>
+        <span style={{fontSize:10,fontWeight:'800',marginTop:-2}}>112</span>
+      </a>
+    </div>
+  );
+}
+
+// ─── Emergency Type Screen ──────────────────────────────────────────────────
+function EmergencyScreen({onSelect, selectedType, onFirstAid}) {
+  const [showAid, setShowAid] = useState(null);
+
+  if(showAid) {
+    const type = EMERGENCY_TYPES.find(t=>t.id===showAid);
+    const steps = FIRST_AID[showAid]||[];
+    return (
+      <div style={{height:'100%',overflowY:'auto',paddingBottom:80}} className="slide-up">
+        <div style={{padding:'48px 20px 20px',background:`linear-gradient(160deg,${type.bg},#07080A)`}}>
+          <button onClick={()=>setShowAid(null)} style={{background:'rgba(255,255,255,.08)',border:'none',color:'#94a3b8',fontSize:13,padding:'8px 14px',borderRadius:12,cursor:'pointer',marginBottom:20}}>← Back</button>
+          <div style={{display:'flex',alignItems:'center',gap:12,marginBottom:8}}>
+            <span style={{fontSize:40}}>{type.icon}</span>
+            <div>
+              <h2 style={{color:'#f1f5f9',fontSize:20,fontWeight:700}}>{type.label}</h2>
+              <span style={{fontSize:12,padding:'2px 10px',borderRadius:999,background:`${type.color}20`,color:type.color,border:`1px solid ${type.color}30`}}>
+                {type.severity===3?'Critical':type.severity===2?'Serious':'Minor'} Severity
+              </span>
+            </div>
+          </div>
+        </div>
+
+        <div style={{padding:'20px'}}>
+          <p style={{color:'#767C87',fontSize:12,textTransform:'uppercase',letterSpacing:'.08em',marginBottom:16,fontWeight:500}}>First Aid Steps</p>
+          <div style={{display:'flex',flexDirection:'column',gap:12,marginBottom:20}}>
+            {steps.map((step,i)=>(
+              <div key={i} style={{display:'flex',gap:12,padding:'14px',borderRadius:24,background:'#101216',border:'1px solid #181B20'}}>
+                <div style={{width:26,height:26,borderRadius:8,background:`${type.color}15`,border:`1px solid ${type.color}30`,display:'flex',alignItems:'center',justifyContent:'center',color:type.color,fontSize:12,fontWeight:700,flexShrink:0}}>
+                  {i+1}
+                </div>
+                <p style={{color:'#cbd5e1',fontSize:13,lineHeight:1.6}}>{step}</p>
+              </div>
+            ))}
+          </div>
+          <button onClick={()=>{onSelect(showAid);setShowAid(null);}}
+            style={{width:'100%',padding:'16px',borderRadius:24,background:type.color,border:'none',color:'#fff',fontSize:15,fontWeight:700,cursor:'pointer',boxShadow:`0 8px 24px ${type.color}40`}}>
+            🆘 Activate SOS for {type.label}
+          </button>
+        </div>
+      </div>
+    );
+  }
+
+  return (
+    <div style={{height:'100%',overflowY:'auto',paddingBottom:80}}>
+      <div style={{padding:'48px 20px 20px',background:'linear-gradient(160deg,#101216,#07080A)'}}>
+        <h2 style={{color:'#f1f5f9',fontSize:22,fontWeight:700,marginBottom:4}}>What happened?</h2>
+        <p style={{color:'#767C87',fontSize:13}}>Select your emergency type for first aid &amp; SOS</p>
+      </div>
+      <div style={{padding:'0 16px 16px',display:'grid',gridTemplateColumns:'1fr 1fr',gap:10}}>
+        {EMERGENCY_TYPES.map(type=>{
+          const sel = selectedType===type.id;
+          return (
+            <div key={type.id}
+              style={{padding:'16px 12px',borderRadius:16,background:sel?type.bg:`rgba(255,255,255,.03)`,border:`1px solid ${sel?type.color:'rgba(255,255,255,.08)'}`,cursor:'pointer',transition:'all .2s',position:'relative'}}
+              onClick={()=>onSelect(type.id)}>
+              {sel&&<div style={{position:'absolute',top:8,right:8,width:16,height:16,borderRadius:'50%',background:type.color,display:'flex',alignItems:'center',justifyContent:'center',fontSize:9,color:'#fff',fontWeight:700}}>✓</div>}
+              <div style={{fontSize:30,marginBottom:8}}>{type.icon}</div>
+              <p style={{color:sel?type.color:'#94a3b8',fontSize:13,fontWeight:600,marginBottom:4}}>{type.label}</p>
+              <div style={{display:'flex',alignItems:'center',justifyContent:'space-between'}}>
+                <span style={{fontSize:10,padding:'2px 6px',borderRadius:4,background:`${type.color}15`,color:type.color}}>
+                  {type.severity===3?'Critical':type.severity===2?'Serious':'Minor'}
+                </span>
+                <button onClick={e=>{e.stopPropagation();setShowAid(type.id);}}
+                  style={{fontSize:10,color:'#2E333B',background:'rgba(255,255,255,.06)',border:'none',padding:'3px 8px',borderRadius:6,cursor:'pointer'}}>
+                  Aid →
+                </button>
+              </div>
+            </div>
+          );
+        })}
+      </div>
+    </div>
+  );
+}
+
+// ─── SOS Screen ────────────────────────────────────────────────────────────
+function SOSScreen({user,location,gpsStatus,selectedType,sosActive,setSosActive,onSOSTrigger,emergencyHistory}) {
+  const {t} = useTheme();
+  const {toast} = useToast();
+  const [level,setLevel] = useState(1);
+  const [sending,setSending] = useState(false);
+  const [sent,setSent] = useState(false);
+  const [error,setError] = useState('');
+  const [lastSos,setLastSos] = useState(null);
+  const [alertResults,setAlertResults] = useState([]);
+  const type = EMERGENCY_TYPES.find(t=>t.id===selectedType);
+
+  const handleSOS = async() => {
+    if(sending||sent) return;
+    setError('');
+    if(gpsStatus==='denied'){
+      setError('Location permission is denied. Enable location so responders can find you. You can still send, but without coordinates.');
+    }
+    setSending(true);
+    try {
+      // CRITICAL: always fetch the freshest profile from RTDB — never cached state.
+      let profile = {};
+      try { profile = (await ProfileService.fetchLatest(user.uid)) || {}; }
+      catch(e){ console.error('[SOS] profile fetch failed, continuing with session data',e); }
+
+      const displayName = profile.displayName || user.displayName || 'User';
+      const phone = profile.phone || user.phone || '';
+      const bloodGroup = profile.bloodGroup || user.bloodGroup || '';
+      const contacts = (Array.isArray(profile.emergencyContacts) && profile.emergencyContacts.length)
+        ? profile.emergencyContacts : (user.emergencyContacts||[]);
+
+      const id = genId();
+      const emergency = {
+        id, sosId:id, userId:user.uid, userName:displayName, userPhone:phone,
+        type: selectedType||'accident', level, status:'active',
+        location: location||null,
+        mapsLink: location?mapsLink(location.latitude,location.longitude):'',
+        bloodGroup, medicalInfo: profile.medicalInfo||'',
+        emergencyType: (selectedType||'accident'),
+        createdAt:Date.now(), updatedAt:Date.now(),
+      };
+
+      if(!DEMO_MODE) {
+        await withRetry(()=> withTimeout(
+          db.ref('emergencies/'+id).set({
+            ...emergency,
+            createdAt:firebase.database.ServerValue.TIMESTAMP,
+            updatedAt:firebase.database.ServerValue.TIMESTAMP,
+          }), 12000, 'Sending SOS timed out. Retrying…'
+        ), {label:'SOS create'});
+
+        // Notify all emergency contacts → emergency_alerts collection.
+        const results = await AlertService.notifyContacts(emergency, contacts);
+        setAlertResults(results);
+
+        // In-app notification + activity log (drives admin + notification center).
+        await NotificationService.push(user.uid, {type:'sos', title:'SOS Activated',
+          body:`Your ${(selectedType||'emergency').replace(/_/g,' ')} alert was sent. ${results.length} contact(s) notified.`});
+        await ActivityService.log('sos_created', `${displayName} triggered a ${(selectedType||'emergency').replace(/_/g,' ')} SOS (L${level})`,
+          {sosId:id, userId:user.uid, level});
+      }
+
+      setLastSos(emergency);
+      onSOSTrigger(emergency);
+      setSosActive(true); setSent(true);
+      toast('SOS sent — help is on the way','success');
+    } catch(err){
+      console.error('[SOS] failed:',err);
+      setError(err.message||'Failed to send SOS. Please try again.');
+      toast('Failed to send SOS','error');
+    } finally {
+      setSending(false);
+    }
+  };
+
+  const handleCancel = async() => {
+    try {
+      if(!DEMO_MODE && lastSos?.id){
+        await db.ref('emergencies/'+lastSos.id).update({status:'cancelled', updatedAt:firebase.database.ServerValue.TIMESTAMP});
+        await NotificationService.push(user.uid, {type:'sos', title:'SOS Cancelled', body:'Your emergency alert was cancelled.'});
+        await ActivityService.log('sos_cancelled', `${user.displayName} cancelled their SOS`, {sosId:lastSos.id, userId:user.uid});
+      }
+    } catch(e){ console.error('[SOS cancel]',e); }
+    setSosActive(false); setSent(false); setAlertResults([]);
+    toast('SOS cancelled','info',1600);
+  };
+
+  return (
+    <div style={{height:'100%',overflowY:'auto',paddingBottom:90,backgroundColor:'#07080A'}}>
+      <div style={{padding:'48px 20px 20px',textAlign:'center'}}>
+        <h2 style={{color:'#F0F1F3',fontSize:22,fontWeight:'900',letterSpacing:'0.3px',marginBottom:4,margin:0}}>Emergency SOS</h2>
+        <div style={{display:'inline-block',marginTop:6,padding:'4px 12px',borderRadius:12,backgroundColor:'#1E293B',border:'1px solid #22252B'}}>
+          <span style={{color:'#A6ACB6',fontSize:10,fontWeight:'800',letterSpacing:'0.5px'}}>
+            {type?`${type.icon} ${type.label.toUpperCase()} SELECTED`:'NO EMERGENCY TYPE SELECTED'}
+          </span>
+        </div>
+      </div>
+
+      {error&&(
+        <div style={{margin:'0 20px 16px',padding:'10px 14px',background:'rgba(245,158,11,.1)',border:'1px solid rgba(245,158,11,.3)',borderRadius:12,color:'#fbbf24',fontSize:12}}>⚠️ {error}</div>
+      )}
+
+      {/* Big SOS Button */}
+      <div style={{display:'flex',justifyContent:'center',marginBottom:32}}>
+        {(() => {
+          const lvl = SOS_LEVELS[level] || SOS_LEVELS[1];
+          return (
+            <div style={{width:230,height:230,borderRadius:'50%',border:'1px solid rgba(255, 59, 48, 0.06)',display:'flex',alignItems:'center',justifyContent:'center'}}>
+              <div style={{width:200,height:200,borderRadius:'50%',border:'1.5px solid rgba(255, 59, 48, 0.15)',display:'flex',alignItems:'center',justifyContent:'center'}}>
+                <button onClick={handleSOS} disabled={sending||sent}
+                  style={{width:170,height:170,borderRadius:'50%',
+                    background:sent?'#2FD67C':sending?'#F5B94D':lvl.color,
+                    border:`6px solid ${sent?'rgba(16,185,129,0.3)':sending?'rgba(245,158,11,0.3)':'rgba(255,59,48,0.3)'}`,
+                    display:'flex',flexDirection:'column',alignItems:'center',justifyContent:'center',cursor:sending||sent?'default':'pointer',
+                    boxShadow:sent?'0 12px 30px rgba(16,185,129,0.5)':sending?'0 12px 30px rgba(245,158,11,0.5)':`0 12px 30px ${lvl.color}80`,
+                    transition:'all .3s',outline:'none'}}>
+                  <span style={{fontSize:44,marginBottom:4}}>{sent?'✓':sending?'⏳':'🆘'}</span>
+                  <span style={{color:'#fff',fontWeight:900,fontSize:16,letterSpacing:.5}}>
+                    {sent?'SENT':sending?'SENDING':`SOS · L${level}`}
+                  </span>
+                </button>
+              </div>
+            </div>
+          );
+        })()}
+      </div>
+
+      {/* Level selector */}
+      {!sent&&!sending&&(
+        <div style={{padding:'0 20px 24px'}}>
+          <p style={{color:'#A6ACB6',fontSize:11,textTransform:'uppercase',letterSpacing:'.08em',marginBottom:12,fontWeight:'800'}}>Emergency severity level</p>
+          <div style={{display:'flex',flexDirection:'column',gap:8}}>
+            {[1,2,3].map(l=>{
+              const info = SOS_LEVELS[l];
+              const active = level===l;
+              return (
+                <button key={l} onClick={()=>setLevel(l)}
+                  style={{padding:'14px 16px',borderRadius:20,border:`1px solid ${active?info.color:'#1E293B'}`,background:active?`${info.color}10`:'#101216',cursor:'pointer',textAlign:'left',display:'flex',alignItems:'center',gap:12,outline:'none'}}>
+                  <div style={{width:32,height:32,borderRadius:10,background:`${info.color}18`,display:'flex',alignItems:'center',justifyContent:'center',color:info.color,fontSize:13,fontWeight:'800',flexShrink:0}}>L{l}</div>
+                  <div style={{flex:1}}>
+                    <p style={{color:active?'#FFFFFF':'#A6ACB6',fontSize:14,fontWeight:'700',margin:0}}>{info.label}</p>
+                    <p style={{color:'#64748B',fontSize:11,marginTop:2,fontWeight:'500',margin:0}}>{info.desc}</p>
+                  </div>
+                </button>
+              );
+            })}
+          </div>
+        </div>
+      )}
+
+      {/* Status */}
+      {sent&&(
+        <div style={{padding:'0 20px'}} className="slide-up">
+          <div style={{padding:'20px',borderRadius:20,background:'rgba(16,185,129,0.08)',border:'1px solid rgba(16,185,129,0.25)',marginBottom:16,textAlign:'center'}}>
+            <p style={{color:'#34d399',fontSize:15,fontWeight:'800',margin:0}}>🚨 Help is on the way</p>
+            {(()=> { const lv=SOS_LEVELS[level]||SOS_LEVELS[1]; return (
+              <span style={{display:'inline-block',fontSize:11,fontWeight:800,padding:'2px 10px',borderRadius:999,background:`${lv.color}22`,color:lv.color,border:`1px solid ${lv.color}44`,margin:'8px 0'}}>L{level} · {lv.label}</span>
+            ); })()}
+            <p style={{color:'#A6ACB6',fontSize:12,margin:0,lineHeight:'18px',fontWeight:'600'}}>
+              {alertResults.length
+                ? `${alertResults.length} emergency contact(s) notified with your coordinates.`
+                : 'Alert dispatched. Add contacts in your profile to auto-notify them.'}
+            </p>
+            {location&&<a href={mapsLink(location.latitude,location.longitude)} target="_blank" style={{color:'#60a5fa',fontSize:11,marginTop:8,fontFamily:'monospace',display:'inline-block',textDecoration:'underline'}}>📍 {location.latitude.toFixed(4)}, {location.longitude.toFixed(4)} (open map)</a>}
+          </div>
+          <div style={{display:'flex',flexDirection:'column',gap:8}}>
+            {[
+              `📱 ${alertResults.length||'Emergency'} contact${alertResults.length===1?'':'s'} notified`,
+              '📡 GPS location shared',
+              '🦺 Nearest rescue team alerted',
+              '🚁 Drone dispatch requested'
+            ].map((s,i)=>(
+              <div key={i} style={{display:'flex',alignItems:'center',gap:10,padding:'10px 14px',borderRadius:16,background:'#101216',border:'1px solid #1E293B'}}>
+                <div style={{width:6,height:6,borderRadius:'50%',background:'#34d399',flexShrink:0}}/>
+                <span style={{color:'#A6ACB6',fontSize:13}}>{s}</span>
+              </div>
+            ))}
+          </div>
+          {alertResults.length>0&&(
+            <div style={{marginTop:14,padding:14,borderRadius:24,background:'#101216',border:'1px solid #1E293B'}}>
+              <p style={{color:'#A6ACB6',fontSize:11,textTransform:'uppercase',letterSpacing:'.06em',marginBottom:10,fontWeight:800}}>Contact Alerts</p>
+              {alertResults.map(a=>(
+                <div key={a.alertId} style={{display:'flex',justifyContent:'space-between',alignItems:'center',padding:'6px 0'}}>
+                  <span style={{color:'#FFFFFF',fontSize:13}}>{a.contactName} · {a.contactPhone}</span>
+                  <span style={{fontSize:11,padding:'2px 8px',borderRadius:999,background:a.deliveryStatus==='failed'?'rgba(255,59,48,.12)':'rgba(16,185,129,.12)',color:a.deliveryStatus==='failed'?'#f87171':'#34d399'}}>{a.deliveryStatus}</span>
+                </div>
+              ))}
+            </div>
+          )}
+          <button onClick={handleCancel} style={{width:'100%',marginTop:20,padding:'14px',borderRadius:16,background:'rgba(239, 68, 68, 0.05)',border:'1px solid #EF4444',color:'#EF4444',fontSize:14,fontWeight:700,cursor:'pointer'}}>
+            Cancel SOS Alert
+          </button>
+        </div>
+      )}
+    </div>
+  );
+}
+
+// ─── AI Assistant Screen ────────────────────────────────────────────────────
+function AIScreen({user}) {
+  const [messages,setMessages] = useState([
+    {id:1, role:'assistant', text:'Hi! I\'m ResQAI, your emergency assistant. Tell me what happened and I\'ll guide you through the best response.\n\n🚨 In critical situations, always press the SOS button first, then talk to me.', time:Date.now()}
+  ]);
+  const [input,setInput] = useState('');
+  const [loading,setLoading] = useState(false);
+  const [apiMode,setApiMode] = useState('demo');
+  const [apiKey,setApiKey] = useState('');
+  const [showSettings,setShowSettings] = useState(false);
+  const bottomRef = useRef(null);
+
+  const scrollBottom = () => { bottomRef.current?.scrollIntoView({behavior:'smooth'}); };
+  useEffect(()=>{ scrollBottom(); },[messages]);
+
+  const QUICK = ['Snake bite help','Heart attack steps','Heavy bleeding','I\'m lost in forest','Earthquake safety'];
+
+  const send = async(text=input) => {
+    if(!text.trim()||loading) return;
+    const userMsg = {id:Date.now(),role:'user',text:text.trim(),time:Date.now()};
+    setMessages(m=>[...m,userMsg]); setInput(''); setLoading(true);
+    try {
+      let reply;
+      if(apiMode==='openai'&&apiKey) {
+        const res = await fetch('https://api.openai.com/v1/chat/completions',{method:'POST',headers:{'Content-Type':'application/json','Authorization':`Bearer ${apiKey}`},
+          body:JSON.stringify({model:'gpt-3.5-turbo',max_tokens:300,messages:[
+            {role:'system',content:'You are ResQAI, an emergency first aid assistant. Give concise, numbered, actionable emergency guidance. Always recommend calling emergency services for serious situations.'},
+            ...messages.slice(-4).map(m=>({role:m.role==='user'?'user':'assistant',content:m.text})),
+            {role:'user',content:text}
+          ]})});
+        const d = await res.json();
+        reply = d.choices?.[0]?.message?.content||getAIResponse(text);
+      } else {
+        await new Promise(r=>setTimeout(r,800));
+        reply = getAIResponse(text);
+      }
+      setMessages(m=>[...m,{id:Date.now()+1,role:'assistant',text:reply,time:Date.now()}]);
+    } catch { setMessages(m=>[...m,{id:Date.now()+1,role:'assistant',text:getAIResponse(text),time:Date.now()}]); }
+    finally { setLoading(false); }
+  };
+
+  return (
+    <div style={{height:'100%',display:'flex',flexDirection:'column',background:'#07080A'}}>
+      {/* Header */}
+      <div style={{padding:'48px 20px 16px',background:'linear-gradient(160deg,#101216,#1e0a3c)',borderBottom:'1px solid #181B20',flexShrink:0}}>
+        <div style={{display:'flex',alignItems:'center',justifyContent:'space-between'}}>
+          <div style={{display:'flex',alignItems:'center',gap:12}}>
+            <div style={{width:42,height:42,borderRadius:16,background:'linear-gradient(135deg,#7c3aed,#4c1d95)',display:'flex',alignItems:'center',justifyContent:'center',fontSize:20}}>🤖</div>
+            <div>
+              <p style={{color:'#f1f5f9',fontSize:16,fontWeight:700}}>ResQAI</p>
+              <div style={{display:'flex',alignItems:'center',gap:4}}>
+                <div style={{width:5,height:5,borderRadius:'50%',background:'#10b981'}} className="pulse"/>
+                <p style={{color:'#34d399',fontSize:11}}>Emergency Assistant · Online</p>
+              </div>
+            </div>
+          </div>
+          <button onClick={()=>setShowSettings(!showSettings)} style={{background:'rgba(255,255,255,.06)',border:'1px solid #22252B',borderRadius:12,padding:'6px 12px',color:'#767C87',fontSize:12,cursor:'pointer'}}>
+            ⚙️ API
+          </button>
+        </div>
+
+        {showSettings&&(
+          <div style={{marginTop:12,padding:'12px',borderRadius:16,background:'rgba(0,0,0,.3)',border:'1px solid #22252B'}} className="slide-up">
+            <select value={apiMode} onChange={e=>setApiMode(e.target.value)}
+              style={{width:'100%',background:'#181B20',border:'1px solid #22252B',borderRadius:8,padding:'8px 12px',color:'#f1f5f9',fontSize:13,marginBottom:8}}>
+              <option value="demo">Demo Mode (no API key needed)</option>
+              <option value="openai">OpenAI GPT (paste key below)</option>
+            </select>
+            {apiMode==='openai'&&(
+              <input value={apiKey} onChange={e=>setApiKey(e.target.value)} placeholder="sk-..." type="password"
+                style={{width:'100%',background:'#181B20',border:'1px solid #22252B',borderRadius:8,padding:'8px 12px',color:'#f1f5f9',fontSize:13}}/>
+            )}
+          </div>
+        )}
+      </div>
+
+      {/* Messages */}
+      <div style={{flex:1,overflowY:'auto',padding:'16px',display:'flex',flexDirection:'column',gap:12}}>
+        {messages.map(m=>(
+          <div key={m.id} style={{display:'flex',justifyContent:m.role==='user'?'flex-end':'flex-start'}}>
+            {m.role==='assistant'&&<div style={{width:28,height:28,borderRadius:8,background:'linear-gradient(135deg,#7c3aed,#4c1d95)',display:'flex',alignItems:'center',justifyContent:'center',fontSize:14,flexShrink:0,marginRight:8,marginTop:2}}>🤖</div>}
+            <div style={{maxWidth:'80%',padding:'12px 14px',borderRadius:m.role==='user'?'16px 16px 4px 16px':'16px 16px 16px 4px',
+              background:m.role==='user'?'linear-gradient(135deg,#7c3aed,#4c1d95)':'#181B20',
+              border:m.role==='assistant'?'1px solid #22252B':'none',fontSize:13,color:'#e2e8f0',lineHeight:1.6,whiteSpace:'pre-wrap'}}>
+              {m.text}
+            </div>
+          </div>
+        ))}
+        {loading&&(
+          <div style={{display:'flex',alignItems:'flex-end',gap:8}}>
+            <div style={{width:28,height:28,borderRadius:8,background:'linear-gradient(135deg,#7c3aed,#4c1d95)',display:'flex',alignItems:'center',justifyContent:'center',fontSize:14}}>🤖</div>
+            <div style={{padding:'12px 16px',borderRadius:'16px 16px 16px 4px',background:'#181B20',border:'1px solid #22252B',display:'flex',gap:4,alignItems:'center'}}>
+              {[0,1,2].map(i=><div key={i} style={{width:6,height:6,borderRadius:'50%',background:'#2E333B',animation:`pulse ${.6+i*.15}s ease-in-out infinite`}}/>)}
+            </div>
+          </div>
+        )}
+        <div ref={bottomRef}/>
+      </div>
+
+      {/* Quick prompts */}
+      <div style={{padding:'8px 16px',display:'flex',gap:8,overflowX:'auto',flexShrink:0,scrollbarWidth:'none'}}>
+        {QUICK.map(q=>(
+          <button key={q} onClick={()=>send(q)} style={{padding:'6px 12px',borderRadius:999,background:'rgba(124,58,237,.1)',border:'1px solid rgba(124,58,237,.3)',color:'#a78bfa',fontSize:11,whiteSpace:'nowrap',cursor:'pointer',flexShrink:0}}>
+            {q}
+          </button>
+        ))}
+      </div>
+
+      {/* Input */}
+      <div style={{padding:'12px 16px 80px',borderTop:'1px solid #181B20',flexShrink:0,display:'flex',gap:10}}>
+        <input value={input} onChange={e=>setInput(e.target.value)} onKeyDown={e=>e.key==='Enter'&&send()}
+          placeholder="Describe your emergency…"
+          style={{flex:1,background:'#181B20',border:'1px solid #22252B',borderRadius:24,padding:'12px 16px',color:'#f1f5f9',fontSize:14,outline:'none',fontFamily:'inherit'}}/>
+        <button onClick={()=>send()} disabled={!input.trim()||loading}
+          style={{width:48,height:48,borderRadius:24,background:input.trim()&&!loading?'linear-gradient(135deg,#7c3aed,#4c1d95)':'#181B20',border:'none',display:'flex',alignItems:'center',justifyContent:'center',cursor:input.trim()&&!loading?'pointer':'default',fontSize:18,flexShrink:0}}>
+          {loading?<div style={{width:16,height:16,border:'2px solid #7c3aed',borderTopColor:'transparent',borderRadius:'50%'}} className="spin"/>:'➤'}
+        </button>
+      </div>
+    </div>
+  );
+}
+
+// ─── Medical Profile Screen ─────────────────────────────────────────────────
+function ProfileScreen({user}) {
+  const {t} = useTheme();
+  const {toast} = useToast();
+  const [tab,setTab] = useState('personal');
+  const [saving,setSaving] = useState(false);
+  const [saved,setSaved] = useState(false);
+  const BLOOD = ['A+','A-','B+','B-','AB+','AB-','O+','O-'];
+  const [profile,setProfile] = useState({
+    fullName: user.displayName||'', age:'', gender:'', height:'', weight:'', bloodGroup: user.bloodGroup||'O+', organDonor:false,
+    allergies:'', medications:'', medicalConditions:'',
+    contact1Name:'', contact1Phone:'', contact1Rel:'Father',
+    contact2Name:'', contact2Phone:'', contact2Rel:'Mother',
+  });
+
+  useEffect(()=>{
+    if(DEMO_MODE) return;
+    (async()=>{
+      try {
+        const snap = await db.ref('medical_profiles/'+user.uid).once('value');
+        if(snap.exists()){
+          const v = snap.val();
+          setProfile(p=>({
+            ...p,
+            fullName: v.fullName||user.displayName||'',
+            age: v.age||'', gender: v.gender||'', height: v.height||'', weight: v.weight||'',
+            bloodGroup: v.bloodGroup||user.bloodGroup||'O+',
+            organDonor: !!v.organDonor,
+            allergies: Array.isArray(v.allergies)?v.allergies.join(', '):v.allergies||'',
+            medications: Array.isArray(v.medications)?v.medications.join(', '):v.medications||'',
+            medicalConditions: Array.isArray(v.medicalConditions)?v.medicalConditions.join(', '):v.medicalConditions||'',
+            contact1Name: v.emergencyContacts?.[0]?.name||'',
+            contact1Phone: v.emergencyContacts?.[0]?.phone||'',
+            contact1Rel: v.emergencyContacts?.[0]?.relation||'Father',
+            contact2Name: v.emergencyContacts?.[1]?.name||'',
+            contact2Phone: v.emergencyContacts?.[1]?.phone||'',
+            contact2Rel: v.emergencyContacts?.[1]?.relation||'Mother',
+          }));
+        }
+      } catch(e){ console.error('[Profile] fetch failed',e); }
+    })();
+  },[user.uid]);
+
+  const save = async () => {
+    setSaving(true); setSaved(false);
+    try {
+      const medical = {
+        userId: user.uid,
+        fullName: profile.fullName.trim(),
+        age: parseInt(profile.age)||null,
+        gender: profile.gender||null,
+        height: parseFloat(profile.height)||null,
+        weight: parseFloat(profile.weight)||null,
+        bloodGroup: profile.bloodGroup,
+        allergies: profile.allergies.split(',').map(s=>s.trim()).filter(Boolean),
+        medications: profile.medications.split(',').map(s=>s.trim()).filter(Boolean),
+        medicalConditions: profile.medicalConditions.split(',').map(s=>s.trim()).filter(Boolean),
+        organDonor: profile.organDonor,
+        emergencyContacts: [
+          profile.contact1Name.trim() && {name:profile.contact1Name.trim(),phone:profile.contact1Phone.trim(),relation:profile.contact1Rel},
+          profile.contact2Name.trim() && {name:profile.contact2Name.trim(),phone:profile.contact2Phone.trim(),relation:profile.contact2Rel},
+        ].filter(Boolean)
+      };
+      await db.ref('medical_profiles/'+user.uid).set(medical);
+      setSaved(true); toast('Profile updated','success'); setTimeout(()=>setSaved(false), 2000);
+    } catch(e){
+      toast('Failed to save profile','error');
+    } finally {
+      setSaving(false);
+    }
+  };
+
+  const inp = {width:'100%',background:'#070B14',border:'1px solid #1E293B',borderRadius:16,padding:'12px 14px',color:'#FFFFFF',fontSize:14,outline:'none',marginBottom:12,fontFamily:'inherit',fontWeight:'500'};
+  const fld = (label,key,type='text',ph='') => (
+    <div><label style={{color:'#A6ACB6',fontSize:11,fontWeight:'800',display:'block',marginBottom:6,textTransform:'uppercase',letterSpacing:'.08em'}}>{label}</label>
+      <input type={type} value={profile[key]} onChange={e=>setProfile(p=>({...p,[key]:e.target.value}))} placeholder={ph} style={inp}/></div>
+  );
+
+  return (
+    <div style={{height:'100%',display:'flex',flexDirection:'column',backgroundColor:'#07080A'}}>
+      <div style={{padding:'48px 20px 16px',backgroundColor:'#07080A',borderBottom:'1px solid #1E293B',flexShrink:0}}>
+        <div style={{display:'flex',alignItems:'center',gap:12,marginBottom:16}}>
+          <div style={{width:48,height:48,borderRadius:20,background:'linear-gradient(135deg,#FF3B30,#FF6B6B)',display:'flex',alignItems:'center',justifyContent:'center',fontSize:22,border:'1.5px solid rgba(255,255,255,0.15)'}}>👤</div>
+          <div>
+            <h2 style={{color:'#F0F1F3',fontSize:18,fontWeight:'900',letterSpacing:'0.3px',margin:0}}>Medical Profile</h2>
+            <p style={{color:'#64748B',fontSize:12,margin:0,marginTop:2,fontWeight:'600'}}>In Case of Emergency (ICE)</p>
+          </div>
+        </div>
+        <div style={{display:'flex',gap:8}}>
+          {['personal','medical','contacts'].map(t=>(
+            <button key={t} onClick={()=>setTab(t)}
+              style={{flex:1,padding:'11px',borderRadius:16,border:`1px solid ${tab===t?'#FF3B30':'#1E293B'}`,background:tab===t?'rgba(255,59,48,.1)':'transparent',color:tab===t?'#FFFFFF':'#A6ACB6',fontSize:12,fontWeight:700,cursor:'pointer',textTransform:'capitalize',outline:'none'}}>
+              {t}
+            </button>
+          ))}
+        </div>
+      </div>
+
+      <div style={{flex:1,overflowY:'auto',padding:'20px 20px 0'}}>
+        {tab==='personal'&&<>
+          {fld('Full Name','fullName','text','Your full name')}
+          <div style={{display:'grid',gridTemplateColumns:'1fr 1fr',gap:10}}>
+            <div>{fld('Age','age','number','Years')}</div>
+            <div>
+              <label style={{color:'#A6ACB6',fontSize:11,fontWeight:'800',display:'block',marginBottom:6,textTransform:'uppercase',letterSpacing:'.08em'}}>Gender</label>
+              <select value={profile.gender} onChange={e=>setProfile(p=>({...p,gender:e.target.value}))} style={{...inp,marginBottom:0}}>
+                <option value="">Select</option>
+                <option value="male">Male</option><option value="female">Female</option><option value="other">Other</option>
+              </select>
+            </div>
+          </div>
+          <div style={{display:'grid',gridTemplateColumns:'1fr 1fr',gap:10,marginTop:12}}>
+            {fld('Height (cm)','height','number','175')}
+            {fld('Weight (kg)','weight','number','70')}
+          </div>
+          <div>
+            <label style={{color:'#A6ACB6',fontSize:11,fontWeight:'800',display:'block',marginBottom:8,textTransform:'uppercase',letterSpacing:'.08em'}}>Blood Group</label>
+            <div style={{display:'grid',gridTemplateColumns:'repeat(4,1fr)',gap:6,marginBottom:16}}>
+              {BLOOD.map(bg=>(
+                <button key={bg} onClick={()=>setProfile(p=>({...p,bloodGroup:bg}))}
+                  style={{padding:'10px',borderRadius:12,border:`1px solid ${profile.bloodGroup===bg?'#FF3B30':'#1E293B'}`,background:profile.bloodGroup===bg?'rgba(255,59,48,.12)':'#101216',color:profile.bloodGroup===bg?'#FFFFFF':'#A6ACB6',fontSize:13,fontWeight:800,cursor:'pointer',outline:'none'}}>
+                  {bg}
+                </button>
+              ))}
+            </div>
+          </div>
+          <div style={{display:'flex',alignItems:'center',justifyContent:'space-between',padding:'14px',borderRadius:20,background:'#101216',border:'1px solid #1E293B',marginBottom:16}}>
+            <div>
+              <p style={{color:'#FFFFFF',fontSize:13,fontWeight:'800',margin:0}}>Organ Donor</p>
+              <p style={{color:'#64748B',fontSize:11,margin:0,marginTop:2,fontWeight:'600'}}>Register as organ donor</p>
+            </div>
+            <div onClick={()=>setProfile(p=>({...p,organDonor:!p.organDonor}))}
+              style={{width:44,height:24,borderRadius:999,background:profile.organDonor?'#34D399':'#1E293B',position:'relative',cursor:'pointer',transition:'background .2s'}}>
+              <div style={{width:18,height:18,borderRadius:'50%',background:'#fff',position:'absolute',top:3,left:profile.organDonor?22:3,transition:'left .2s',boxShadow:'0 1px 4px rgba(0,0,0,.3)'}}/>
+            </div>
+          </div>
+        </>}
+
+        {tab==='medical'&&<>
+          <div>
+            <label style={{color:'#A6ACB6',fontSize:11,fontWeight:'800',display:'block',marginBottom:6,textTransform:'uppercase',letterSpacing:'.08em'}}>Allergies</label>
+            <textarea value={profile.allergies} onChange={e=>setProfile(p=>({...p,allergies:e.target.value}))} placeholder="Penicillin, Shellfish… (comma separated)"
+              style={{...inp,height:80,resize:'none'}}/>
+          </div>
+          <div>
+            <label style={{color:'#A6ACB6',fontSize:11,fontWeight:'800',display:'block',marginBottom:6,textTransform:'uppercase',letterSpacing:'.08em'}}>Current Medications</label>
+            <textarea value={profile.medications} onChange={e=>setProfile(p=>({...p,medications:e.target.value}))} placeholder="Metformin 500mg, Aspirin… (comma separated)"
+              style={{...inp,height:80,resize:'none'}}/>
+          </div>
+          <div>
+            <label style={{color:'#767C87',fontSize:11,fontWeight:500,display:'block',marginBottom:6,textTransform:'uppercase',letterSpacing:'.05em'}}>Medical Conditions</label>
+            <textarea value={profile.medicalConditions} onChange={e=>setProfile(p=>({...p,medicalConditions:e.target.value}))} placeholder="Diabetes, Hypertension… (comma separated)"
+              style={{...inp,height:80,resize:'none'}}/>
+          </div>
+        </>}
+
+        {tab==='contacts'&&<>
+          {[{n:'contact1',label:'Primary Contact'},{n:'contact2',label:'Secondary Contact'}].map(({n,label})=>(
+            <div key={n} style={{marginBottom:20}}>
+              <p style={{color:'#94a3b8',fontSize:13,fontWeight:600,marginBottom:12}}>📞 {label}</p>
+              {fld('Name',`${n}Name`,'text','Contact name')}
+              {fld('Phone',`${n}Phone`,'tel','+91-XXXXXXXXXX')}
+              <div>
+                <label style={{color:'#767C87',fontSize:11,fontWeight:500,display:'block',marginBottom:6,textTransform:'uppercase',letterSpacing:'.05em'}}>Relation</label>
+                <select value={profile[`${n}Rel`]} onChange={e=>setProfile(p=>({...p,[`${n}Rel`]:e.target.value}))} style={inp}>
+                  {['Father','Mother','Spouse','Sibling','Friend','Guardian','Doctor','Other'].map(r=><option key={r}>{r}</option>)}
+                </select>
+              </div>
+            </div>
+          ))}
+        </>}
+      </div>
+
+      <div style={{padding:'12px 20px 80px',flexShrink:0}}>
+        <button onClick={save} disabled={saving}
+          style={{width:'100%',padding:'15px',borderRadius:24,background:saved?'linear-gradient(135deg,#10b981,#059669)':'linear-gradient(135deg,#16a34a,#15803d)',border:'none',color:'#fff',fontSize:15,fontWeight:700,cursor:'pointer',opacity:saving?.7:1}}>
+          {saving?'Saving…':saved?'✓ Saved!':'Save Medical Profile'}
+        </button>
+      </div>
+    </div>
+  );
+}
+
+// ─── History Screen ─────────────────────────────────────────────────────────
+function HistoryScreen({emergencyHistory}) {
+  const STATUS_C = {active:'#EF4444',assigned:'#F5B94D',resolved:'#34D399',cancelled:'#A6ACB6'};
+  return (
+    <div style={{height:'100%',overflowY:'auto',paddingBottom:80,backgroundColor:'#07080A'}}>
+      <div style={{padding:'48px 20px 20px',backgroundColor:'#07080A'}}>
+        <h2 style={{color:'#F0F1F3',fontSize:22,fontWeight:'900',letterSpacing:'0.3px',marginBottom:4,margin:0}}>Emergency History</h2>
+        <p style={{color:'#64748B',fontSize:13,margin:0,fontWeight:'600'}}>{emergencyHistory.length} total records</p>
+      </div>
+      {emergencyHistory.length===0
+        ? <div style={{padding:40,textAlign:'center'}}>
+            <div style={{width:64,height:64,borderRadius:20,backgroundColor:'rgba(255, 255, 255, 0.02)',border:'1px solid #1E293B',display:'inline-flex',alignItems:'center',justifyContent:'center',fontSize:32,marginBottom:16}}>📋</div>
+            <p style={{color:'#FFFFFF',fontSize:15,fontWeight:'800',margin:0}}>No alerts yet</p>
+            <p style={{color:'#64748B',fontSize:13,marginTop:6,fontWeight:'600',margin:0}}>Your SOS history will appear here</p>
+          </div>
+        : <div style={{padding:'0 16px',display:'flex',flexDirection:'column',gap:12}}>
+            {emergencyHistory.map(e=>{
+              const type = EMERGENCY_TYPES.find(t=>t.id===e.type)||{icon:'⚠️',label:e.type,color:'#767C87'};
+              const sc = STATUS_C[e.status]||'#767C87';
+              return (
+                <div key={e.id} style={{padding:'16px',borderRadius:20,background:'#101216',border:'1px solid #1E293B'}}>
+                  <div style={{display:'flex',alignItems:'flex-start',justifyContent:'space-between',marginBottom:10}}>
+                    <div style={{display:'flex',alignItems:'center',gap:10}}>
+                      <div style={{width:44,height:44,borderRadius:12,backgroundColor:`${type.color||'#FF3B30'}15`,display:'flex',alignItems:'center',justifyContent:'center'}}>
+                        <span style={{fontSize:22}}>{type.icon}</span>
+                      </div>
+                      <div>
+                        <p style={{color:'#FFFFFF',fontSize:14,fontWeight:'800',m  const FALLBACK = {
+    hospitals:[
+      {id:'fb-h1',name:'KMC Speciality Hospital - Guindy',phone:'+91-44-22350000',type:'Private',latitude:13.0185,longitude:80.2140,address:'GST Road, Guindy'},
+      {id:'fb-h2',name:'ESI Hospital - Guindy',phone:'+91-44-22501471',type:'Government',latitude:13.0152,longitude:80.2125,address:'Industrial Estate, Guindy'},
+      {id:'fb-h3',name:'Government Peripheral Hospital - Saidapet',phone:'+91-44-24351111',type:'Government',latitude:13.0240,longitude:80.2240,address:'Anna Salai, Saidapet'},
+      {id:'fb-h4',name:'MIOT International Hospital',phone:'+91-44-42002288',type:'Private',latitude:13.0225,longitude:80.1882,address:'Mount Poonamallee Rd, Manapakkam'},
+      {id:'fb-h5',name:'SIMS Hospital - Vadapalani',phone:'+91-44-20002000',type:'Private',latitude:13.0515,longitude:80.2120,address:'Vadapalani'},
+    ],
+    police:[
+      {id:'fb-p1',name:'Saidapet Police Station',phone:'+91-44-23452442',type:'Police',latitude:13.0245,longitude:80.2225,address:'Anna Salai, Saidapet'},
+      {id:'fb-p2',name:'Guindy Industrial Estate Police Station',phone:'+91-44-23452440',type:'Police',latitude:13.0145,longitude:80.2105,address:'Industrial Estate, Guindy'},
+      {id:'fb-p3',name:'St. Thomas Mount Police Station',phone:'+91-44-23452445',type:'Police',latitude:13.0035,longitude:80.2015,address:'St. Thomas Mount'},
+      {id:'fb-p4',name:'Adyar Police Station',phone:'+91-44-23452410',type:'Police',latitude:13.0012,longitude:80.2560,address:'LB Road, Adyar'},
+    ],
+  };02)'}}>
+                    {[
+                      {done:true, label:'SOS Activated'},
+                      {done:e.status!=='active', label:'Team Assigned'},
+                      {done:e.status==='resolved', label:'Rescue Complete'},
+                    ].map((s,i)=>(
+                      <div key={i} style={{display:'flex',alignItems:'center',gap:8}}>
+                        <div style={{width:14,height:14,borderRadius:'50%',background:s.done?'#10b981':'#1E293B',flexShrink:0,display:'flex',alignItems:'center',justifyContent:'center',fontSize:8,color:'#fff'}}>{s.done?'✓':''}</div>
+                        <span style={{fontSize:11,color:s.done?'#34d399':'#64748B',fontWeight:'600'}}>{s.label}</span>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              );
+            })}
+          </div>
+      }
+    </div>
+  );
+}
+
+// ─── Nearby Services ────────────────────────────────────────────────────────
+function NearbyScreen({location, gpsStatus}) {
+  const {t, resolved} = useTheme();
+  const {toast} = useToast();
+  const [tab,setTab] = useState('hospitals');
+  const [ambulances,setAmbulances] = useState([]);
+  const [hospitals,setHospitals] = useState([]);
+  const [police,setPolice] = useState([]);
+  const [loading,setLoading] = useState(false);
+  const [placesError,setPlacesError] = useState('');
+  const publishedRef = useRef(false);
+
+  // Static fallback (used only if the live places lookup fails or GPS is off).
+  const FALLBACK = {
+    hospitals:[
+      {id:'fb-h1',name:'KMC Speciality Hospital - Guindy',phone:'+91-44-22350000',type:'Private',latitude:13.0185,longitude:80.2140,address:'GST Road, Guindy'},
+      {id:'fb-h2',name:'ESI Hospital - Guindy',phone:'+91-44-22501471',type:'Government',latitude:13.0152,longitude:80.2125,address:'Industrial Estate, Guindy'},
+      {id:'fb-h3',name:'Government Peripheral Hospital - Saidapet',phone:'+91-44-24351111',type:'Government',latitude:13.0240,longitude:80.2240,address:'Anna Salai, Saidapet'},
+      {id:'fb-h4',name:'MIOT International Hospital',phone:'+91-44-42002288',type:'Private',latitude:13.0225,longitude:80.1882,address:'Mount Poonamallee Rd, Manapakkam'},
+      {id:'fb-h5',name:'SIMS Hospital - Vadapalani',phone:'+91-44-20002000',type:'Private',latitude:13.0515,longitude:80.2120,address:'Vadapalani'},
+    ],
+    police:[
+      {id:'fb-p1',name:'Saidapet Police Station',phone:'+91-44-23452442',type:'Police',latitude:13.0245,longitude:80.2225,address:'Anna Salai, Saidapet'},
+      {id:'fb-p2',name:'Guindy Industrial Estate Police Station',phone:'+91-44-23452440',type:'Police',latitude:13.0145,longitude:80.2105,address:'Industrial Estate, Guindy'},
+      {id:'fb-p3',name:'St. Thomas Mount Police Station',phone:'+91-44-23452445',type:'Police',latitude:13.0035,longitude:80.2015,address:'St. Thomas Mount'},
+      {id:'fb-p4',name:'Adyar Police Station',phone:'+91-44-23452410',type:'Police',latitude:13.0012,longitude:80.2560,address:'LB Road, Adyar'},
+    ],
+  };
+
+  // Fetch REAL hospitals + police around the user's live GPS via Overpass.
+  useEffect(()=>{
+    if(!location || gpsStatus!=='active') return;
+    let active = true;
+    setLoading(true); setPlacesError('');
+    (async()=>{
+      try {
+        const [h, p] = await Promise.all([
+          PlacesService.fetchNearby(location, 'hospital', 10000),
+          PlacesService.fetchNearby(location, 'police', 10000),
+        ]);
+        if(!active) return;
+        setHospitals(h); setPolice(p);
+        // Publish discovered hospitals to RTDB once per session so the admin
+        // dashboard shows the same GPS-relevant facilities.
+        if(!publishedRef.current && h.length){
+          publishedRef.current = true;
+          PlacesService.publishHospitals(h, 'mobile-app');
+        }
+      } catch(err){
+        if(!active) return;
+        console.error('[Nearby] places lookup failed:', err);
+        setPlacesError('Could not load live facilities — showing offline list.');
+        setHospitals([]); setPolice([]);
+      } finally { if(active) setLoading(false); }
+    })();
+    return ()=>{ active=false; };
+  },[location?.latitude, location?.longitude, gpsStatus]);
+
+  // Ambulances come live from RTDB; fall back to a small static set if empty.
+  useEffect(()=>{
+    if(DEMO_MODE) return;
+    const ref = db.ref('ambulances');
+    const h = ref.on('value', s=>{
+      const v=s.val()||{};
+      setAmbulances(Object.keys(v).map(k=>({id:k,...v[k]})));
+    }, e=>console.error('[Nearby ambulances]',e));
+    return ()=> ref.off('value', h);
+  },[]);
+
+  const withDistances = (arr)=> arr.map(s=>{
+    const d = haversineKm(location, s);
+    return {...s, _dist:d};
+  }).sort((a,b)=> (a._dist??1e9)-(b._dist??1e9));
+
+  const liveHospitals = hospitals.length ? hospitals : FALLBACK.hospitals;
+  const livePolice = police.length ? police : FALLBACK.police;
+  const hospitalList = withDistances(liveHospitals);
+  const policeList = withDistances(livePolice);
+  const ambList = withDistances(
+    (ambulances.length?ambulances:[
+      {id:'AMB-001',name:'City Ambulance 1',status:'available',phone:'108',latitude:11.0210,longitude:76.9560},
+      {id:'AMB-002',name:'Rapid Response 2',status:'available',phone:'108',latitude:11.0150,longitude:76.9650},
+    ]).map(a=>({...a, location: unitLoc(a)})).map(a=>({...a, latitude:a.location?.latitude, longitude:a.location?.longitude}))
+  );
+
+  const TABS=[['hospitals','Hospitals'],['police','Police'],['ambulances','Ambulances']];
+
+  const call = (phone)=>{ if(!phone){ toast('No phone number listed','warning'); return; } window.location.href=`tel:${phone}`; };
+  const navigate = (s)=>{
+    if(s.latitude==null||s.longitude==null){ toast('Location unavailable for this service','warning'); return; }
+    window.open(navLink(s.latitude,s.longitude),'_blank');
+  };
+
+  const card = {padding:16,borderRadius:24,background:'#101216',border:'1px solid #1E293B'};
+
+  const subtitle = gpsStatus==='active'&&location
+    ? (loading ? '⏳ Finding facilities near you…' : 'Real facilities near your live location')
+    : gpsStatus==='denied' ? '⛔ Enable location to find facilities near you'
+    : '⚡ Acquiring GPS… facilities load automatically';
+
+  const renderFacility = (s,i,kind) => (
+    <div key={s.id||i} style={card}>
+      <div style={{display:'flex',alignItems:'center',justifyContent:'space-between',marginBottom:10}}>
+        <div style={{display:'flex',alignItems:'center',gap:10}}>
+          <div style={{width:44,height:44,borderRadius:12,backgroundColor:`${kind==='police'?'#3B82F6':'#EF4444'}15`,display:'flex',alignItems:'center',justifyContent:'center'}}>
+            <span style={{fontSize:22}}>{kind==='police'?'👮':'🏥'}</span>
+          </div>
+          <div>
+            <p style={{color:'#FFFFFF',fontSize:14,fontWeight:'800',margin:0}}>{s.name}</p>
+            <p style={{color:'#64748B',fontSize:12,margin:0,marginTop:2,fontWeight:'600'}}>📍 {fmtDistance(s._dist)} · ⏱ {fmtEta(s._dist)}{s.type?` · ${s.type}`:''}</p>
+            {s.address&&<p style={{color:'#64748B',fontSize:11,marginTop:2,margin:0,lineHeight:'14px',fontWeight:'500'}}>{s.address}</p>}
+          </div>
+        </div>
+      </div>
+      <div style={{display:'flex',gap:8}}>
+        <button onClick={()=>call(s.phone)} style={{flex:1,padding:10,borderRadius:14,background:'rgba(255,255,255,0.02)',border:'1px solid #1E293B',color:'#A6ACB6',fontSize:13,fontWeight:700,cursor:'pointer',outline:'none'}}>📞 {s.phone||'Call'}</button>
+        <button onClick={()=>navigate(s)} style={{flex:1,padding:10,borderRadius:14,background:'rgba(255,255,255,0.02)',border:'1px solid #1E293B',color:'#A6ACB6',fontSize:13,fontWeight:700,cursor:'pointer',outline:'none'}}>🗺 Navigate</button>
+      </div>
+    </div>
+  );
+
+  return (
+    <div style={{height:'100%',overflowY:'auto',paddingBottom:90,background:'#07080A'}}>
+      <div style={{padding:'48px 20px 16px',background:'#07080A'}}>
+        <h2 style={{color:'#F0F1F3',fontSize:22,fontWeight:'900',letterSpacing:'0.3px',marginBottom:4,margin:0}}>Nearby Services</h2>
+        <p style={{color:'#64748B',fontSize:13,margin:0,fontWeight:'600'}}>{subtitle}</p>
+        {placesError&&<p style={{color:'#fbbf24',fontSize:12,marginTop:6,margin:0}}>⚠️ {placesError}</p>}
+        <div style={{display:'flex',gap:8,marginTop:16}}>
+          {TABS.map(([k,label])=>(
+            <button key={k} onClick={()=>setTab(k)}
+              style={{flex:1,padding:'11px',borderRadius:16,border:`1px solid ${tab===k?'#FF3B30':'#1E293B'}`,background:tab===k?'rgba(255,59,48,.1)':'transparent',color:tab===k?'#f87171':'#94a3b8',fontSize:12,fontWeight:700,cursor:'pointer',outline:'none'}}>
+              {label}
+            </button>
+          ))}
+        </div>
+      </div>
+
+      <div style={{padding:'12px 16px',display:'flex',flexDirection:'column',gap:10}}>
+        {loading && (tab==='hospitals'||tab==='police') && (
+          <div style={{display:'flex',justifyContent:'center',padding:24}}>
+            <div style={{width:24,height:24,border:'2px solid #1E293B',borderTopColor:'#FF3B30',borderRadius:'50%'}} className="spin"/>
+          </div>
+        )}
+
+        {!loading && tab==='hospitals' && (hospitalList.length===0
+          ? <EmptyState icon="🏥" title="No hospitals found nearby" subtitle="Try moving to an area with coverage or check your connection."/>
+          : hospitalList.map((s,i)=>renderFacility(s,i,'hospital')))}
+
+        {!loading && tab==='police' && (policeList.length===0
+          ? <EmptyState icon="👮" title="No police stations found nearby" subtitle="Try again once your GPS signal improves."/>
+          : policeList.map((s,i)=>renderFacility(s,i,'police')))}
+
+        {tab==='ambulances' && (ambList.length===0
+          ? <EmptyState icon="🚑" title="No ambulances nearby" subtitle="Available units will appear here as they come online."/>
+          : ambList.map((s,i)=>{
+            const avail = (s.status||'available')==='available';
+            return (
+              <div key={i} style={card}>
+                <div style={{display:'flex',alignItems:'center',justifyContent:'space-between',marginBottom:10}}>
+                  <div style={{display:'flex',alignItems:'center',gap:10}}>
+                    <div style={{width:44,height:44,borderRadius:12,backgroundColor:'rgba(255, 59, 48, 0.15)',display:'flex',alignItems:'center',justifyContent:'center'}}>
+                      <span style={{fontSize:26}}>🚑</span>
+                    </div>
+                    <div>
+                      <p style={{color:'#FFFFFF',fontSize:14,fontWeight:'800',margin:0}}>{s.name||s.id}</p>
+                      <p style={{color:'#64748B',fontSize:12,margin:0,marginTop:2,fontWeight:'600'}}>ID: {s.id} · 📍 {fmtDistance(s._dist)} · ⏱ ETA {fmtEta(s._dist)}</p>
+                    </div>
+                  </div>
+                  <span style={{fontSize:11,padding:'3px 10px',borderRadius:999,background:avail?'rgba(16,185,129,.1)':'rgba(245,158,11,.1)',color:avail?'#34d399':'#fbbf24',border:`1px solid ${avail?'rgba(16,185,129,.3)':'rgba(245,158,11,.3)'}`,fontWeight:600}} className={avail?'':'pulse'}>
+                    {(s.status||'available').replace(/_/g,' ').toUpperCase()}
+                  </span>
+                </div>
+                <div style={{display:'flex',gap:8}}>
+                  <button onClick={()=>call(s.phone||'108')} style={{flex:1,padding:10,borderRadius:14,background:'rgba(255,255,255,0.02)',border:'1px solid #1E293B',color:'#A6ACB6',fontSize:13,fontWeight:700,cursor:'pointer',outline:'none'}}>📞 Call {s.phone||'108'}</button>
+                  <button onClick={()=>navigate(s)} style={{flex:1,padding:10,borderRadius:14,background:'rgba(255,255,255,0.02)',border:'1px solid #1E293B',color:'#A6ACB6',fontSize:13,fontWeight:700,cursor:'pointer',outline:'none'}}>🗺 Track</button>
+                </div>
+              </div>
+            );
+          }))}
+      </div>
+    </div>
+  );
+}
+
+// ─── Drone Screen ──────────────────────────────────────────────────────────
+function DroneScreen() {
+  const [droneStatus,setDroneStatus] = useState('standby');
+  const [battery] = useState(92);
+  const [altitude,setAltitude] = useState(0);
+  const [speed,setSpeed] = useState(0);
+  const [progress,setProgress] = useState(0);
+
+  const launch = () => {
+    setDroneStatus('searching'); setAltitude(80); setSpeed(45); setProgress(15);
+    setTimeout(()=>{setDroneStatus('en_route'); setAltitude(120); setSpeed(60); setProgress(45);},3000);
+    setTimeout(()=>{setDroneStatus('victim_located'); setAltitude(30); setSpeed(10); setProgress(80);},8000);
+    setTimeout(()=>{setDroneStatus('rescue_complete'); setAltitude(0); setSpeed(0); setProgress(100);},14000);
+  };
+  const ret = () => { setDroneStatus('standby'); setAltitude(0); setSpeed(0); setProgress(0); };
+
+  const STATUS_INFO = {
+    standby:{label:'Standby',color:'#767C87',desc:'Ready for deployment'},
+    searching:{label:'Searching',color:'#3b82f6',desc:'Scanning area for victim'},
+    en_route:{label:'En Route',color:'#f59e0b',desc:'Flying to incident location'},
+    victim_located:{label:'Victim Located',color:'#FF3B30',desc:'Victim spotted — descending'},
+    rescue_complete:{label:'Rescue Complete',color:'#10b981',desc:'Mission accomplished'},
+  };
+  const info = STATUS_INFO[droneStatus];
+
+  return (
+    <div style={{height:'100%',overflowY:'auto',paddingBottom:80}}>
+      <div style={{padding:'48px 20px 20px',background:'linear-gradient(160deg,#0c1a2e,#07080A)'}}>
+        <div style={{display:'flex',alignItems:'center',gap:12,marginBottom:16}}>
+          <div style={{width:48,height:48,borderRadius:24,background:'linear-gradient(135deg,#1d4ed8,#1e40af)',display:'flex',alignItems:'center',justifyContent:'center',fontSize:24}}>🚁</div>
+          <div>
+            <h2 style={{color:'#f1f5f9',fontSize:18,fontWeight:700}}>ResQDrone-X1</h2>
+            <p style={{color:'#767C87',fontSize:12}}>Emergency rescue drone</p>
+          </div>
+        </div>
+
+        {/* Main status */}
+        <div style={{padding:'20px',borderRadius:24,background:`rgba(29,78,216,.1)`,border:'1px solid rgba(29,78,216,.2)',textAlign:'center'}}>
+          <div style={{fontSize:64,marginBottom:12}}>🚁</div>
+          <div style={{display:'inline-flex',alignItems:'center',gap:6,padding:'6px 16px',borderRadius:999,background:`${info.color}20`,border:`1px solid ${info.color}40`,marginBottom:8}}>
+            <div style={{width:6,height:6,borderRadius:'50%',background:info.color}} className={droneStatus!=='standby'&&droneStatus!=='rescue_complete'?'pulse':''}/>
+            <span style={{color:info.color,fontSize:13,fontWeight:600}}>{info.label}</span>
+          </div>
+          <p style={{color:'#767C87',fontSize:12}}>{info.desc}</p>
+
+          {progress>0&&<div style={{marginTop:16}}>
+            <div style={{display:'flex',justifyContent:'space-between',fontSize:11,marginBottom:6}}>
+              <span style={{color:'#2E333B'}}>Mission Progress</span>
+              <span style={{color:'#94a3b8'}}>{progress}%</span>
+            </div>
+            <div style={{height:6,borderRadius:999,background:'#181B20'}}>
+              <div style={{height:6,borderRadius:999,background:'linear-gradient(90deg,#3b82f6,#8b5cf6)',width:`${progress}%`,transition:'width 1s ease'}}/>
+            </div>
+          </div>}
+        </div>
+      </div>
+
+      <div style={{padding:'16px 20px',display:'flex',flexDirection:'column',gap:14}}>
+        {/* Stats grid */}
+        <div style={{display:'grid',gridTemplateColumns:'1fr 1fr',gap:10}}>
+          {[
+            {label:'Battery',value:`${battery}%`,color:battery>50?'#10b981':battery>20?'#f59e0b':'#FF3B30',icon:'🔋'},
+            {label:'Altitude',value:`${altitude}m`,color:'#60a5fa',icon:'📏'},
+            {label:'Speed',value:`${speed} km/h`,color:'#a78bfa',icon:'⚡'},
+            {label:'Range',value:'5 km',color:'#34d399',icon:'📡'},
+          ].map(s=>(
+            <div key={s.label} style={{padding:'14px',borderRadius:24,background:'#101216',border:'1px solid #181B20'}}>
+              <p style={{color:'#2E333B',fontSize:11,marginBottom:6}}>{s.icon} {s.label}</p>
+              <p style={{color:s.color,fontSize:20,fontWeight:700}}>{s.value}</p>
+            </div>
+          ))}
+        </div>
+
+        {/* Capabilities */}
+        <div style={{padding:'14px',borderRadius:24,background:'#101216',border:'1px solid #181B20'}}>
+          <p style={{color:'#767C87',fontSize:11,textTransform:'uppercase',letterSpacing:'.08em',marginBottom:12,fontWeight:500}}>Capabilities</p>
+          <div style={{display:'grid',gridTemplateColumns:'1fr 1fr',gap:8}}>
+            {['🎥 Thermal Camera','🔦 Search Light','🔊 Loud Speaker','💊 Med Delivery','📦 First Aid Drop','📍 GPS Tracking'].map(c=>(
+              <div key={c} style={{fontSize:12,color:'#767C87',display:'flex',alignItems:'center',gap:6,padding:'6px 0'}}>{c}</div>
+            ))}
+          </div>
+        </div>
+
+        {/* Controls */}
+        <div style={{display:'flex',gap:10}}>
+          {droneStatus==='standby'
+            ? <button onClick={launch} style={{flex:1,padding:'16px',borderRadius:24,background:'linear-gradient(135deg,#1d4ed8,#1e40af)',border:'none',color:'#fff',fontSize:15,fontWeight:700,cursor:'pointer',boxShadow:'0 8px 24px rgba(29,78,216,.4)'}}>
+                🚀 Launch Drone
+              </button>
+            : <button onClick={ret} style={{flex:1,padding:'16px',borderRadius:24,background:'rgba(100,116,139,.1)',border:'1px solid #22252B',color:'#94a3b8',fontSize:15,fontWeight:600,cursor:'pointer'}}>
+                ↩ Return to Base
+              </button>
+          }
+        </div>
+      </div>
+    </div>
+  );
+}
+
+// ─── Bluetooth Screen ──────────────────────────────────────────────────────
+function BluetoothScreen({user,location}) {
+  const [active,setActive] = useState(false);
+  const [nearby,setNearby] = useState([]);
+
+  useEffect(()=>{
+    if(!active) { setNearby([]); return; }
+    const t = setTimeout(()=>{
+      setNearby([
+        {id:'RES-001',type:'Rescue Team',signal:'strong',dist:'45m',name:'Alpha Rescue Unit'},
+        {id:'USR-432',type:'ResQLink User',signal:'medium',dist:'120m',name:'Unknown User'},
+        {id:'DRN-X2',type:'ResQDrone',signal:'weak',dist:'380m',name:'ResQDrone-X2'},
+      ]);
+    },2000);
+    return ()=>clearTimeout(t);
+  },[active]);
+
+  const SC = {strong:'#10b981',medium:'#f59e0b',weak:'#FF3B30'};
+
+  return (
+    <div style={{height:'100%',overflowY:'auto',paddingBottom:80}}>
+      <div style={{padding:'48px 20px 20px',background:'linear-gradient(160deg,#0a1628,#07080A)'}}>
+        <div style={{display:'flex',alignItems:'center',gap:12,marginBottom:20}}>
+          <div style={{width:48,height:48,borderRadius:24,background:'linear-gradient(135deg,#1d4ed8,#0ea5e9)',display:'flex',alignItems:'center',justifyContent:'center',fontSize:22}}>📶</div>
+          <div><h2 style={{color:'#f1f5f9',fontSize:18,fontWeight:700}}>BlueBeacon BLE</h2>
+            <p style={{color:'#767C87',fontSize:12}}>Offline rescue detection</p></div>
+        </div>
+
+        {/* Toggle */}
+        <div style={{padding:'20px',borderRadius:24,background:active?'rgba(30,120,255,.1)':'rgba(255,255,255,.03)',border:`1px solid ${active?'rgba(30,120,255,.3)':'rgba(255,255,255,.08)'}`,textAlign:'center',transition:'all .3s'}}>
+          <div style={{fontSize:56,marginBottom:12}}>{active?'📡':'📶'}</div>
+          <p style={{color:active?'#60a5fa':'#767C87',fontSize:15,fontWeight:600,marginBottom:4}}>{active?'Broadcasting Signal…':'BlueBeacon Inactive'}</p>
+          <p style={{color:'#2E333B',fontSize:12,marginBottom:16}}>{active?'Emergency data being broadcast to nearby devices':'Activate to broadcast your location offline'}</p>
+          <button onClick={()=>setActive(!active)}
+            style={{padding:'12px 32px',borderRadius:16,background:active?'rgba(255,59,48,.15)':'linear-gradient(135deg,#1d4ed8,#0ea5e9)',border:active?'1px solid rgba(255,59,48,.3)':'none',color:active?'#f87171':'#fff',fontSize:14,fontWeight:700,cursor:'pointer'}}>
+            {active?'Stop Broadcasting':'Activate BlueBeacon'}
+          </button>
+        </div>
+      </div>
+
+      <div style={{padding:'16px 20px'}}>
+        {active&&<>
+          {/* Broadcast data */}
+          <p style={{color:'#767C87',fontSize:11,textTransform:'uppercase',letterSpacing:'.08em',marginBottom:10,fontWeight:500}}>Broadcasting</p>
+          <div style={{padding:'14px',borderRadius:24,background:'rgba(30,120,255,.05)',border:'1px solid rgba(30,120,255,.2)',marginBottom:16,display:'flex',flexDirection:'column',gap:6}}>
+            {[
+              ['User ID', user?.uid?.slice(0,8)||'DEMO-001'],
+              ['Location', location?`${location.latitude.toFixed(4)}, ${location.longitude.toFixed(4)}`:'Unavailable'],
+              ['Blood Group','O+'],
+              ['Battery','87%'],
+              ['Emergency','Active SOS'],
+            ].map(([k,v])=>(
+              <div key={k} style={{display:'flex',justifyContent:'space-between',fontSize:12}}>
+                <span style={{color:'#2E333B'}}>{k}</span>
+                <span style={{color:'#94a3b8',fontFamily:'monospace',fontSize:11}}>{v}</span>
+              </div>
+            ))}
+          </div>
+
+          {/* Nearby devices */}
+          <p style={{color:'#767C87',fontSize:11,textTransform:'uppercase',letterSpacing:'.08em',marginBottom:10,fontWeight:500}}>Nearby Devices ({nearby.length})</p>
+          {nearby.length===0
+            ? <div style={{textAlign:'center',padding:20,color:'#22252B',fontSize:13}}>Scanning for devices…</div>
+            : <div style={{display:'flex',flexDirection:'column',gap:8}}>
+                {nearby.map(d=>(
+                  <div key={d.id} style={{padding:'14px',borderRadius:24,background:'#101216',border:'1px solid #181B20',display:'flex',alignItems:'center',gap:12}}>
+                    <div style={{width:36,height:36,borderRadius:12,background:`${SC[d.signal]}15`,display:'flex',alignItems:'center',justifyContent:'center',fontSize:16,flexShrink:0}}>
+                      {d.type.includes('Drone')?'🚁':d.type.includes('Team')?'🦺':'📱'}
+                    </div>
+                    <div style={{flex:1}}>
+                      <p style={{color:'#f1f5f9',fontSize:13,fontWeight:500}}>{d.name}</p>
+                      <p style={{color:'#2E333B',fontSize:11}}>{d.type} · {d.dist}</p>
+                    </div>
+                    <div style={{textAlign:'right'}}>
+                      <span style={{fontSize:11,padding:'2px 8px',borderRadius:6,background:`${SC[d.signal]}15`,color:SC[d.signal],border:`1px solid ${SC[d.signal]}30`}}>{d.signal}</span>
+                    </div>
+                  </div>
+                ))}
+              </div>
+          }
+        </>}
+      </div>
+    </div>
+  );
+}
+
+// ─── Reusable: Empty State ──────────────────────────────────────────────────
+function EmptyState({icon='📭', title='Nothing here yet', subtitle=''}) {
+  const {t} = useTheme();
+  return (
+    <div style={{display:'flex',flexDirection:'column',alignItems:'center',justifyContent:'center',padding:'48px 24px',textAlign:'center'}}>
+      <div style={{fontSize:44,marginBottom:12,opacity:.7}}>{icon}</div>
+      <p style={{color:t.soft,fontSize:15,fontWeight:600}}>{title}</p>
+      {subtitle&&<p style={{color:t.dim,fontSize:13,marginTop:6,maxWidth:260}}>{subtitle}</p>}
+    </div>
+  );
+}
+
+// ─── Reusable: Offline banner ───────────────────────────────────────────────
+function OfflineBanner() {
+  const online = useOnline();
+  if(online) return null;
+  return (
+    <div style={{position:'fixed',top:0,left:0,right:0,zIndex:999,maxWidth:430,margin:'0 auto',
+      background:'rgba(245,158,11,.95)',color:'#fff',fontSize:12,fontWeight:600,textAlign:'center',padding:'7px 12px'}}>
+      ⚠️ You are offline — emergency data will sync when connection returns
+    </div>
+  );
+}
+
+// ─── Settings Screen ────────────────────────────────────────────────────────
+function SettingsScreen({user, setUser, onSignOut}) {
+  const {t, pref, setPref} = useTheme();
+  const {toast} = useToast();
+  const [section,setSection] = useState('account');
+  const [form,setForm] = useState({
+    displayName:user?.displayName||'', phone:user?.phone||'', address:user?.address||'',
+    bloodGroup:user?.bloodGroup||'O+', medicalInfo:user?.medicalInfo||'',
+  });
+  const [contacts,setContacts] = useState(()=> Array.isArray(user?.emergencyContacts) && user.emergencyContacts.length
+    ? user.emergencyContacts : [{name:'',phone:'',relation:'Father'}]);
+  const [saving,setSaving] = useState(false);
+  const [loadingProfile,setLoadingProfile] = useState(true);
+  const BLOOD = ['A+','A-','B+','B-','AB+','AB-','O+','O-'];
+
+  // Always hydrate the freshest profile from RTDB on mount.
+  useEffect(()=>{
+    let active=true;
+    (async()=>{
+      try {
+        const latest = await ProfileService.fetchLatest(user?.uid);
+        if(active && latest){
+          setForm({
+            displayName:latest.displayName||user?.displayName||'', phone:latest.phone||'',
+            address:latest.address||'', bloodGroup:latest.bloodGroup||'O+', medicalInfo:latest.medicalInfo||'',
+          });
+          if(Array.isArray(latest.emergencyContacts)&&latest.emergencyContacts.length) setContacts(latest.emergencyContacts);
+        }
+      } catch(err){ console.error('[Settings] profile load:',err); toast('Could not load latest profile','error'); }
+      finally { if(active) setLoadingProfile(false); }
+    })();
+    return ()=>{ active=false; };
+  },[user?.uid]);
+
+  const card = {background:'#101216',border:'1px solid #1E293B',borderRadius:24,padding:16,marginBottom:14};
+  const inp = {width:'100%',background:'#070B14',border:'1px solid #1E293B',borderRadius:16,padding:'12px 14px',color:'#FFFFFF',fontSize:14,outline:'none',marginBottom:12,fontFamily:'inherit',fontWeight:'500'};
+  const lbl = {color:'#A6ACB6',fontSize:11,fontWeight:'800',display:'block',marginBottom:6,textTransform:'uppercase',letterSpacing:'.08em'};
+
+  const saveAccount = async() => {
+    if(!form.displayName.trim()){ toast('Name cannot be empty','error'); return; }
+    if(form.phone && !/^[+\d][\d\s-]{6,}$/.test(form.phone)){ toast('Enter a valid phone number','error'); return; }
+    setSaving(true);
+    try {
+      const patch = {
+        displayName:form.displayName.trim(), phone:form.phone.trim(), address:form.address.trim(),
+        bloodGroup:form.bloodGroup, medicalInfo:form.medicalInfo.trim(),
+        emergencyContacts:contacts.filter(c=>c.name?.trim()&&c.phone?.trim()),
+      };
+      await ProfileService.update(user.uid, patch);
+      setUser(u=>({...u, ...patch}));
+      await ActivityService.log('profile_updated', `${form.displayName} updated their profile`, {userId:user.uid});
+      await NotificationService.push(user.uid, {type:'profile', title:'Profile updated', body:'Your emergency profile was saved.'});
+      toast('Profile saved','success');
+    } catch(err){ toast(err.message||'Failed to save','error'); }
+    finally { setSaving(false); }
+  };
+
+  const updateContact = (i,key,val)=> setContacts(cs=>cs.map((c,idx)=>idx===i?{...c,[key]:val}:c));
+  const addContact = ()=> setContacts(cs=>[...cs,{name:'',phone:'',relation:'Friend'}]);
+  const removeContact = (i)=> setContacts(cs=>cs.filter((_,idx)=>idx!==i));
+
+  const THEMES = [
+    {key:'light', icon:'☀️', label:'Light Mode'},
+    {key:'dark', icon:'🌙', label:'Dark Mode'},
+    {key:'system', icon:'🖥️', label:'System Default'},
+  ];
+
+  const changeTheme = async(key) => {
+    setPref(key);
+    toast(`Theme: ${key}`,'success',1600);
+    try { await ProfileService.update(user.uid, {theme:key}); } catch {}
+  };
+
+  return (
+    <div style={{height:'100%',overflowY:'auto',paddingBottom:90,backgroundColor:'#07080A'}}>
+      <div style={{padding:'48px 20px 16px',backgroundColor:'#07080A',borderBottom:'1px solid #1E293B'}}>
+        <div style={{display:'flex',alignItems:'center',gap:12,marginBottom:16}}>
+          <div style={{width:48,height:48,borderRadius:20,background:'linear-gradient(135deg,#FF3B30,#FF6B6B)',display:'flex',alignItems:'center',justifyContent:'center',fontSize:22,border:'1.5px solid rgba(255,255,255,0.15)'}}>⚙️</div>
+          <div>
+            <h2 style={{color:'#F0F1F3',fontSize:18,fontWeight:'900',letterSpacing:'0.3px',margin:0}}>Settings</h2>
+            <p style={{color:'#64748B',fontSize:12,margin:0,marginTop:2,fontWeight:'600'}}>{user?.email}</p>
+          </div>
+        </div>
+        <div style={{display:'flex',gap:8}}>
+          {[['account','Account'],['theme','Theme'],['auth','Account & Session']].map(([k,label])=>(
+            <button key={k} onClick={()=>setSection(k)}
+              style={{flex:1,padding:'11px',borderRadius:16,border:`1px solid ${section===k?'#FF3B30':'#1E293B'}`,background:section===k?'rgba(255,59,48,.1)':'transparent',color:section===k?'#FFFFFF':'#A6ACB6',fontSize:11,fontWeight:700,cursor:'pointer',outline:'none'}}>
+              {label}
+            </button>
+          ))}
+        </div>
+      </div>
+
+      <div style={{padding:'16px 16px 0'}}>
+        {loadingProfile && section==='account' && (
+          <div style={{display:'flex',justifyContent:'center',padding:24}}>
+            <div style={{width:24,height:24,border:'2px solid #1E293B',borderTopColor:'#FF3B30',borderRadius:'50%'}} className="spin"/>
+          </div>
+        )}
+
+        {section==='account' && !loadingProfile && <>
+          <div style={card}>
+            <p style={{color:'#FFFFFF',fontSize:13,fontWeight:'800',marginBottom:14}}>Personal Information</p>
+            <label style={lbl}>Full Name</label>
+            <input style={inp} value={form.displayName} onChange={e=>setForm(f=>({...f,displayName:e.target.value}))} placeholder="Your name"/>
+            <label style={lbl}>Phone Number</label>
+            <input style={inp} type="tel" value={form.phone} onChange={e=>setForm(f=>({...f,phone:e.target.value}))} placeholder="+91-XXXXXXXXXX"/>
+            <label style={lbl}>Address</label>
+            <textarea style={{...inp,height:64,resize:'none'}} value={form.address} onChange={e=>setForm(f=>({...f,address:e.target.value}))} placeholder="Home / current address"/>
+            <label style={lbl}>Blood Group</label>
+            <div style={{display:'grid',gridTemplateColumns:'repeat(4,1fr)',gap:6,marginBottom:12}}>
+              {BLOOD.map(bg=>(
+                <button key={bg} onClick={()=>setForm(f=>({...f,bloodGroup:bg}))}
+                  style={{padding:'10px',borderRadius:12,border:`1px solid ${form.bloodGroup===bg?'#FF3B30':'#1E293B'}`,background:form.bloodGroup===bg?'rgba(255,59,48,.12)':'transparent',color:form.bloodGroup===bg?'#FFFFFF':'#A6ACB6',fontSize:13,fontWeight:800,cursor:'pointer',outline:'none'}}>{bg}</button>
+              ))}
+            </div>
+            <label style={lbl}>Medical Information</label>
+            <textarea style={{...inp,height:72,resize:'none',marginBottom:0}} value={form.medicalInfo} onChange={e=>setForm(f=>({...f,medicalInfo:e.target.value}))} placeholder="Allergies, conditions, medications…"/>
+          </div>
+
+          <div style={card}>
+            <div style={{display:'flex',alignItems:'center',justifyContent:'space-between',marginBottom:14}}>
+              <p style={{color:'#FFFFFF',fontSize:13,fontWeight:'800',margin:0}}>Emergency Contacts</p>
+              <button onClick={addContact} style={{background:'rgba(16,185,129,.12)',border:'1px solid rgba(16,185,129,.3)',color:'#34d399',fontSize:12,fontWeight:600,borderRadius:9,padding:'5px 10px',cursor:'pointer',outline:'none'}}>+ Add</button>
+            </div>
+            {contacts.map((c,i)=>(
+              <div key={i} style={{padding:12,borderRadius:20,border:'1px solid #1E293B',marginBottom:10,background:'#070B14'}}>
+                <div style={{display:'flex',justifyContent:'space-between',alignItems:'center',marginBottom:8}}>
+                  <span style={{color:'#A6ACB6',fontSize:11,fontWeight:'800'}}>Contact {i+1}</span>
+                  {contacts.length>1&&<button onClick={()=>removeContact(i)} style={{background:'none',border:'none',color:'#EF4444',fontSize:12,cursor:'pointer',fontWeight:700,outline:'none'}}>Remove</button>}
+                </div>
+                <input style={{...inp,marginBottom:8}} value={c.name||''} onChange={e=>updateContact(i,'name',e.target.value)} placeholder="Contact name"/>
+                <input style={{...inp,marginBottom:8}} type="tel" value={c.phone||''} onChange={e=>updateContact(i,'phone',e.target.value)} placeholder="+91-XXXXXXXXXX"/>
+                <select style={{...inp,marginBottom:0}} value={c.relation||'Friend'} onChange={e=>updateContact(i,'relation',e.target.value)}>
+                  {['Father','Mother','Spouse','Sibling','Friend','Guardian','Doctor','Other'].map(r=><option key={r}>{r}</option>)}
+                </select>
+              </div>
+            ))}
+          </div>
+
+          <button onClick={saveAccount} disabled={saving}
+            style={{width:'100%',padding:15,borderRadius:20,background:'#FF3B30',border:'none',color:'#fff',fontSize:15,fontWeight:'800',cursor:'pointer',opacity:saving?.7:1,marginBottom:16,outline:'none'}}>
+            {saving?'Saving…':'Save Changes'}
+          </button>
+        </>}
+
+        {section==='theme' && <>
+          <div style={card}>
+            <p style={{color:'#FFFFFF',fontSize:13,fontWeight:'800',marginBottom:14}}>Appearance</p>
+            <div style={{display:'flex',flexDirection:'column',gap:10}}>
+              {THEMES.map(th=>(
+                <button key={th.key} onClick={()=>changeTheme(th.key)}
+                  style={{display:'flex',alignItems:'center',gap:12,padding:'14px',borderRadius:20,border:`1px solid ${pref===th.key?'#FF3B30':'#1E293B'}`,background:pref===th.key?'rgba(255,59,48,.1)':'transparent',cursor:'pointer',textAlign:'left',outline:'none'}}>
+                  <span style={{fontSize:22}}>{th.icon}</span>
+                  <span style={{flex:1,color:pref===th.key?'#FFFFFF':'#A6ACB6',fontSize:14,fontWeight:'800'}}>{th.label}</span>
+                  {pref===th.key&&<span style={{color:'#FF3B30',fontSize:16,fontWeight:'800'}}>✓</span>}
+                </button>
+              ))}
+            </div>
+            <p style={{color:'#64748B',fontSize:11,marginTop:12,lineHeight:'14px',fontWeight:'600'}}>Your theme preference is saved to your account and applied across sessions.</p>
+          </div>
+        </>}
+
+        {section==='auth' && <>
+          <div style={card}>
+            <p style={{color:'#FFFFFF',fontSize:13,fontWeight:'800',marginBottom:14}}>Session</p>
+            <div style={{display:'flex',alignItems:'center',gap:12,marginBottom:14}}>
+              <div style={{width:44,height:44,borderRadius:'50%',background:'rgba(255,59,48,.15)',display:'flex',alignItems:'center',justifyContent:'center',color:'#FF3B30',fontWeight:'900',fontSize:18}}>
+                {(user?.displayName||'U').charAt(0).toUpperCase()}
+              </div>
+              <div style={{flex:1,minWidth:0}}>
+                <p style={{color:'#FFFFFF',fontSize:14,fontWeight:'800',margin:0}}>{user?.displayName}</p>
+                <p style={{color:'#64748B',fontSize:12,margin:0,marginTop:2,fontWeight:'600'}}>{user?.email}</p>
+              </div>
+              <span style={{display:'inline-flex',alignItems:'center',gap:5,fontSize:11,color:'#34d399',background:'rgba(16,185,129,.1)',border:'1px solid rgba(16,185,129,.3)',borderRadius:999,padding:'4px 10px',fontWeight:700}}>
+                <span style={{width:6,height:6,borderRadius:'50%',background:'#34d399'}} className="pulse"/> Active
+              </span>
+            </div>
+            <div style={{padding:'10px 12px',borderRadius:12,background:'#070B14',fontSize:12,color:'#64748B',fontWeight:'600',lineHeight:'16px',border:'1px solid #1E293B'}}>
+              Signed in as <b style={{color:'#A6ACB6'}}>{user?.role||'user'}</b>. Your session persists securely until you sign out.
+            </div>
+          </div>
+          <button onClick={onSignOut}
+            style={{width:'100%',padding:15,borderRadius:20,background:'rgba(255,59,48,.05)',border:'1px solid #EF4444',color:'#EF4444',fontSize:15,fontWeight:'800',cursor:'pointer',marginBottom:16,outline:'none'}}>
+            Sign Out
+          </button>
+        </>}
+      </div>
+    </div>
+  );
+}
+
+// ─── Notification Center ─────────────────────────────────────────────────────
+function NotificationScreen({user, notifications}) {
+  const {t} = useTheme();
+  useEffect(()=>{ if(user?.uid) NotificationService.markAllRead(user.uid, notifications); },[]);
+  const iconFor = (type)=>({sos:'🆘', rescue:'🦺', ambulance:'🚑', drone:'🚁', contact:'📱', profile:'👤'}[type]||'🔔');
+  return (
+    <div style={{height:'100%',overflowY:'auto',paddingBottom:90,background:t.bg}}>
+      <div style={{padding:'48px 20px 16px',background:`linear-gradient(160deg,${t.gradA},${t.gradB})`,borderBottom:`1px solid ${t.border}`}}>
+        <h2 style={{color:t.text,fontSize:18,fontWeight:700}}>Notifications</h2>
+        <p style={{color:t.muted,fontSize:12}}>Updates on your alerts &amp; rescue status</p>
+      </div>
+      {(!notifications||notifications.length===0)
+        ? <EmptyState icon="🔔" title="No notifications" subtitle="SOS, rescue team, ambulance and drone updates will appear here."/>
+        : <div style={{padding:'12px 16px',display:'flex',flexDirection:'column',gap:10}}>
+            {notifications.map(n=>(
+              <div key={n.id} style={{padding:14,borderRadius:24,background:t.surface,border:`1px solid ${n.read?t.border:'rgba(99,102,241,.4)'}`,display:'flex',gap:12}}>
+                <div style={{fontSize:22}}>{iconFor(n.type)}</div>
+                <div style={{flex:1,minWidth:0}}>
+                  <div style={{display:'flex',justifyContent:'space-between',gap:8}}>
+                    <p style={{color:t.text,fontSize:14,fontWeight:600}}>{n.title}</p>
+                    {!n.read&&<span style={{width:8,height:8,borderRadius:'50%',background:'#6366f1',flexShrink:0,marginTop:4}}/>}
+                  </div>
+                  <p style={{color:t.soft,fontSize:13,marginTop:2}}>{n.body}</p>
+                  <p style={{color:t.dim,fontSize:11,marginTop:6}}>{n.createdAt?timeAgo(n.createdAt):'Just now'}</p>
+                </div>
+              </div>
+            ))}
+          </div>}
+    </div>
+  );
+}
+
+// ─── Live Tracking Map ───────────────────────────────────────────────────────
+// Shows the user plus any assigned ambulance / rescue team / drone using a
+// lightweight SVG map driven by real-time RTDB listeners (no refresh needed).
+function LiveTrackingScreen({user, location, activeSos}) {
+  const {t, resolved} = useTheme();
+  const [units,setUnits] = useState({ambulance:null,team:null,drone:null});
+
+  useEffect(()=>{
+    if(DEMO_MODE) return;
+    const refs=[];
+    const watch = (path, id, key) => {
+      if(!id) return;
+      const r = db.ref(`${path}/${id}`);
+      const h = r.on('value', s=> setUnits(u=>({...u,[key]:s.exists()?{id,...s.val()}:null})), e=>console.error('[LiveTracking]',e));
+      refs.push(()=>r.off('value',h));
+    };
+    watch('ambulances', activeSos?.assignedAmbulanceId, 'ambulance');
+    watch('rescue_teams', activeSos?.assignedTeamId, 'team');
+    watch('drones', activeSos?.droneId || activeSos?.assignedDroneId, 'drone');
+    return ()=> refs.forEach(off=>off());
+  },[activeSos?.assignedAmbulanceId, activeSos?.assignedTeamId, activeSos?.droneId]);
+
+  const center = location || {latitude:11.0168, longitude:76.9558};
+  const project = (loc) => {
+    if(!loc) return null;
+    const scale=4000; // px per degree
+    return { x:160 + (loc.longitude-center.longitude)*scale, y:160 - (loc.latitude-center.latitude)*scale };
+  };
+  const markers = [
+    {key:'user', loc:location, color:'#10b981', icon:'📍', label:'You'},
+    units.ambulance&&{key:'amb', loc:unitLoc(units.ambulance), color:'#FF3B30', icon:'🚑', label:units.ambulance.name||'Ambulance'},
+    units.team&&{key:'team', loc:unitLoc(units.team), color:'#3b82f6', icon:'🦺', label:units.team.name||'Rescue Team'},
+    units.drone&&{key:'drone', loc:unitLoc(units.drone), color:'#a78bfa', icon:'🚁', label:units.drone.name||'Drone'},
+  ].filter(Boolean);
+
+  return (
+    <div style={{height:'100%',overflowY:'auto',paddingBottom:90,backgroundColor:'#07080A'}}>
+      <div style={{padding:'48px 20px 16px',backgroundColor:'#07080A'}}>
+        <h2 style={{color:'#F0F1F3',fontSize:18,fontWeight:'900',letterSpacing:'0.3px',margin:0}}>Live Tracking</h2>
+        <p style={{color:'#64748B',fontSize:12,margin:0,marginTop:2,fontWeight:'600'}}>Real-time positions of you &amp; assigned units</p>
+      </div>
+
+      {!activeSos
+        ? <EmptyState icon="🛰️" title="No active emergency" subtitle="When you trigger an SOS, your assigned ambulance, rescue team and drone will appear here in real time."/>
+        : <div style={{padding:16}}>
+            <div style={{borderRadius:24,overflow:'hidden',border:'1px solid #1E293B',background:'#070B14',marginBottom:14}}>
+              <svg viewBox="0 0 320 320" style={{width:'100%',display:'block',background:'radial-gradient(circle at 50% 50%, rgba(255,59,48,.03), transparent 70%)'}}>
+                {/* grid */}
+                {[0,1,2,3,4].map(i=>(<g key={i}>
+                  <line x1={i*80} y1="0" x2={i*80} y2="320" stroke="rgba(255,255,255,0.02)" strokeWidth="0.5"/>
+                  <line x1="0" y1={i*80} x2="320" y2={i*80} stroke="rgba(255,255,255,0.02)" strokeWidth="0.5"/>
+                </g>))}
+                {/* connection lines from user to units */}
+                {project(location) && markers.filter(m=>m.key!=='user'&&project(m.loc)).map(m=>{
+                  const u=project(location), p=project(m.loc);
+                  return <line key={'l'+m.key} x1={u.x} y1={u.y} x2={p.x} y2={p.y} stroke={m.color} strokeWidth="1.5" strokeDasharray="4 4" opacity="0.4"/>;
+                })}
+                {markers.map(m=>{ const p=project(m.loc); if(!p) return null; return (
+                  <g key={m.key}>
+                    <circle cx={p.x} cy={p.y} r="16" fill={m.color} opacity="0.15"/>
+                    <circle cx={p.x} cy={p.y} r="6" fill={m.color}/>
+                    <text x={p.x} y={p.y-14} fontSize="14" textAnchor="middle">{m.icon}</text>
+                  </g>
+                );})}
+              </svg>
+            </div>
+            <div style={{display:'flex',flexDirection:'column',gap:10}}>
+              {markers.map(m=>{
+                const d = m.key==='user'?null:haversineKm(location, unitLocSafe(m.loc));
+                return (
+                  <div key={'c'+m.key} style={{padding:12,borderRadius:20,background:'#101216',border:'1px solid #1E293B',display:'flex',alignItems:'center',gap:12}}>
+                    <div style={{width:38,height:38,borderRadius:11,background:`${m.color}15`,display:'flex',alignItems:'center',justifyContent:'center',fontSize:18}}>{m.icon}</div>
+                    <div style={{flex:1}}>
+                      <p style={{color:'#FFFFFF',fontSize:14,fontWeight:'700',margin:0}}>{m.label}</p>
+                      <p style={{color:'#64748B',fontSize:12,margin:0,marginTop:2,fontWeight:'600'}}>
+                        {m.key==='user'?'Your location':`${fmtDistance(d)} · ETA ${fmtEta(d)}${m.loc?.status?` · ${String(m.loc.status).replace(/_/g,' ')}`:''}`}
+                      </p>
+                    </div>
+                  </div>
+                );
+              })}
+            </div>
+          </div>}
+    </div>
+  );
+}
+function unitLoc(u){ if(!u) return null; if(u.location) return u.location; if(u.latitude!=null&&u.longitude!=null) return {latitude:u.latitude,longitude:u.longitude}; return null; }
+function unitLocSafe(u){ return unitLoc(u)||u; }
+
+// ─── Main App ──────────────────────────────────────────────────────────────
+function App() {
+  const themeCtx = useTheme();
+  const {t} = themeCtx;
+  const {toast} = useToast();
+  const [screen,setScreen] = useState('splash');
+  const [tab,setTab] = useState('home');
+  const [user,setUser] = useState(null);
+  const [location,setLocation] = useState(null);
+  const [gpsStatus,setGpsStatus] = useState('acquiring');
+  const [sosActive,setSosActive] = useState(false);
+  const [activeSos,setActiveSos] = useState(null);
+  const [selectedType,setSelectedType] = useState(null);
+  const [history,setHistory] = useState([]);
+  const [navHistory,setNavHistory] = useState([]);
+  const [notifications,setNotifications] = useState([]);
+
+  // Handle preview frame messages
+  useEffect(() => {
+    const handleMsg = (e) => {
+      if (e.origin !== window.location.origin) return;
+      if (e.data && e.data.type === 'NAVIGATE') {
+        const target = e.data.screen;
+        if (target === 'splash') {
+          setScreen('splash');
+        } else if (['home', 'sos', 'ai', 'profile'].includes(target)) {
+          setScreen('main');
+          setTab(target);
+        }
+      }
+    };
+    window.addEventListener('message', handleMsg);
+    return () => window.removeEventListener('message', handleMsg);
+  }, []);
+
+  // GPS — real device location, no fake fallback
+  useEffect(()=>{
+    if(!navigator.geolocation){ setGpsStatus('unavailable'); return; }
+    setGpsStatus('acquiring');
+
+    const onSuccess = (pos) => {
+      setLocation({
+        latitude:  pos.coords.latitude,
+        longitude: pos.coords.longitude,
+        altitude:  pos.coords.altitude,
+        accuracy:  pos.coords.accuracy,
+        timestamp: Date.now()
+      });
+      setGpsStatus('active');
+    };
+
+    const onError = (err) => {
+      // code 1 = permission denied, 2 = unavailable, 3 = timeout
+      setLocation(null);
+      setGpsStatus(err.code === 1 ? 'denied' : 'unavailable');
+    };
+
+    const opts = {enableHighAccuracy:true, timeout:15000, maximumAge:0};
+    // Immediate single fix then continuous watch
+    navigator.geolocation.getCurrentPosition(onSuccess, onError, opts);
+    const wid = navigator.geolocation.watchPosition(onSuccess, onError, opts);
+    return ()=> navigator.geolocation.clearWatch(wid);
+  },[]);
+
+  // Apply persisted theme from the user's profile once it loads.
+  // (ThemeProvider already restored from localStorage; profile is source of truth.)
+  useEffect(()=>{
+    if(user?.theme && user.theme!==themeCtx.pref) themeCtx.setPref(user.theme);
+  },[user?.theme]);
+
+  // Firebase auth — restore session and always hydrate FRESH profile from RTDB.
+  useEffect(()=>{
+    if(DEMO_MODE) return;
+    const unsub = auth.onAuthStateChanged(async fbUser=>{
+      if(fbUser) {
+        try {
+          const d = (await ProfileService.fetchLatest(fbUser.uid)) || {};
+          const u = {uid:fbUser.uid,email:fbUser.email,displayName:d.displayName||'User',role:d.role||'user',
+            phone:d.phone||'', address:d.address||'', bloodGroup:d.bloodGroup||'O+',
+            medicalInfo:d.medicalInfo||'', emergencyContacts:d.emergencyContacts||[], theme:d.theme||'system'};
+          setUser(u);
+          setScreen(s=> s==='splash' ? s : 'main');
+        } catch(err) {
+          console.error('[onAuthStateChanged] Failed to load profile:', err);
+          toast('Could not load your profile. Check your connection.','error');
+        }
+      } else {
+        setUser(null);
+      }
+    });
+    return unsub;
+  },[]);
+
+  // Live notifications listener (drives the badge + Notification Center).
+  useEffect(()=>{
+    if(!user?.uid) { setNotifications([]); return; }
+    const unsub = NotificationService.subscribe(user.uid, setNotifications);
+    return unsub;
+  },[user?.uid]);
+
+  // Track the user's most recent active/assigned SOS in real time for live map.
+  useEffect(()=>{
+    if(DEMO_MODE || !user?.uid) return;
+    const ref = db.ref('emergencies');
+    const h = ref.on('value', s=>{
+      const v=s.val()||{};
+      const mine=Object.keys(v).map(k=>({id:k,...v[k]}))
+        .filter(e=>e.userId===user.uid && (e.status==='active'||e.status==='assigned'||e.status==='en_route'||e.status==='on_scene'))
+        .sort((a,b)=>(b.createdAt||0)-(a.createdAt||0));
+      setActiveSos(mine[0]||null);
+      setSosActive(mine.length>0);
+    }, e=>console.error('[App active sos]',e));
+    return ()=> ref.off('value', h);
+  },[user?.uid]);
+
+  const handleAuth = (u) => { setUser(u); setScreen('main'); };
+  const handleSOSTrigger = (e) => { setHistory(h=>[e,...h]); };
+
+  // Full logout cleanup → return to auth screen.
+  const handleSignOut = async () => {
+    try { if(!DEMO_MODE) await auth.signOut(); } catch(e){ console.error('[signOut]',e); }
+    setUser(null); setNotifications([]); setActiveSos(null); setSosActive(false);
+    setHistory([]); setNavHistory([]); setTab('home'); setScreen('auth');
+    toast('Signed out','success',1600);
+  };
+
+  // Navigate forward — push current tab into history stack
+  const handleTabChange = (t) => {
+    setNavHistory(prev => [...prev, tab]);
+    setTab(t);
+  };
+
+  // Navigate back — pop previous tab from stack
+  const handleBack = () => {
+    setNavHistory(prev => {
+      if(prev.length === 0) return prev;
+      const prevTab = prev[prev.length - 1];
+      setTab(prevTab);
+      return prev.slice(0, -1);
+    });
+  };
+
+  if(screen==='splash') return <SplashScreen onStart={()=>setScreen('auth')}/>;
+  if(screen==='auth') return <AuthScreen onAuth={handleAuth}/>;
+
+  const SCREEN_TITLES = {
+    home:'Home', emergency:'Emergencies', sos:'Smart SOS', ai:'ResQAI',
+    profile:'Profile', nearby:'Nearby Services', history:'History',
+    drone:'Drone Control', bluetooth:'BlueBeacon', medical:'Medical Profile',
+    settings:'Settings', notifications:'Notifications', tracking:'Live Tracking'
+  };
+
+  const canGoBack = navHistory.length > 0 && tab !== 'home';
+  const unreadCount = notifications.filter(n=>!n.read).length;
+
+  const SCREENS = {
+    home:      <HomeScreen user={user} location={location} gpsStatus={gpsStatus} sosActive={sosActive} setSosActive={setSosActive} setTab={handleTabChange} emergencyHistory={history} unreadCount={unreadCount}/>,
+    emergency: <EmergencyScreen onSelect={t=>{setSelectedType(t);handleTabChange('sos');}} selectedType={selectedType} onFirstAid={()=>{}}/>,
+    sos:       <SOSScreen user={user} location={location} gpsStatus={gpsStatus} selectedType={selectedType} sosActive={sosActive} setSosActive={setSosActive} onSOSTrigger={handleSOSTrigger} emergencyHistory={history}/>,
+    ai:        <AIScreen user={user}/>,
+    profile:   <ProfileScreen user={user}/>,
+    nearby:    <NearbyScreen location={location} gpsStatus={gpsStatus}/>,
+    history:   <HistoryScreen emergencyHistory={history}/>,
+    drone:     <DroneScreen/>,
+    bluetooth: <BluetoothScreen user={user} location={location}/>,
+    medical:   <ProfileScreen user={user}/>,
+    settings:  <SettingsScreen user={user} setUser={setUser} onSignOut={handleSignOut}/>,
+    notifications: <NotificationScreen user={user} notifications={notifications}/>,
+    tracking:  <LiveTrackingScreen user={user} location={location} activeSos={activeSos}/>,
+  };
+
+  return (
+    <div style={{height:'100vh',display:'flex',flexDirection:'column',background:t.bg,maxWidth:430,margin:'0 auto',position:'relative',overflow:'hidden'}}>
+      <OfflineBanner/>
+      <div style={{flex:1,overflow:'hidden',position:'relative'}}>
+        {/* ← Back button — top-left, all screens except Home */}
+        {canGoBack && (
+          <BackButton
+            onBack={handleBack}
+            label={SCREEN_TITLES[navHistory[navHistory.length-1]] || 'Back'}
+          />
+        )}
+        {SCREENS[tab]||SCREENS.home}
+      </div>
+      <BottomNav tab={tab} setTab={handleTabChange} sosActive={sosActive} sosLevel={activeSos?.level}/>
+    </div>
+  );
+}
+
+function Root() {
+  return (
+    <ThemeProvider>
+      <ToastProvider>
+        <App/>
+      </ToastProvider>
+    </ThemeProvider>
+  );
+}
+
+ReactDOM.createRoot(document.getElementById('root')).render(<Root/>);
+</script>
+</body>
+</html>

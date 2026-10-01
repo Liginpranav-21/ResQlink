@@ -1,0 +1,177 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+/* ==========================================================================
+   RESQLINK DASHBOARD — SAME SYSTEM AS THE PORTFOLIO
+   This isn't a separate visual identity — it's the exact glass/glow/aurora
+   language from frontend/product-website (brand navy + red/blue/green,
+   glass-panel & glass-card primitives, the animated aurora mesh, the
+   reflection shine on hover), applied to the dashboard's existing markup
+   through the same override technique used for the last redesign: this app
+   already funnels every card through `bg-slate-900` + `border-slate-800`,
+   so retargeting those two classes is what makes the whole app match the
+   portfolio at once, without hand-editing every page.
+   ========================================================================== */
+
+:root {
+  --navy: #0B1220;
+  --surface: #111827;
+  --card: #1F2937;
+  --border: #334155;
+  --text-primary: #F8FAFC;
+  --text-secondary: #CBD5E1;
+  --text-tertiary: #94A3B8;
+  --text-muted: #64748B;
+
+  --brand-red: #FF3B30;   /* primary brand accent — logo, primary actions, alerts */
+  --brand-blue: #2563EB;  /* secondary accent — info, live/tech states */
+  --brand-green: #10B981; /* success */
+  --brand-yellow: #F59E0B;/* caution */
+  --brand-violet: #818CF8;/* extra chart/series colour, same family as the portfolio's blue */
+}
+
+@layer base {
+  * { box-sizing: border-box; }
+  html { -webkit-font-smoothing: antialiased; -moz-osx-font-smoothing: grayscale; }
+  body {
+    background-color: var(--navy) !important;
+    color: var(--text-primary) !important;
+    font-family: 'Inter', system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+  }
+
+  ::-webkit-scrollbar { width: 8px; height: 8px; }
+  ::-webkit-scrollbar-track { background: var(--navy); }
+  ::-webkit-scrollbar-thumb { background: var(--card); border: 2px solid var(--navy); border-radius: 9999px; }
+  ::-webkit-scrollbar-thumb:hover { background: var(--border); }
+
+  .font-mono, code { font-family: 'JetBrains Mono', ui-monospace, monospace; }
+}
+
+/* ==========================================================================
+   GLASSMORPHISM PRIMITIVES — identical recipe to the portfolio's
+   .glass-panel / .glass-card, ported onto this app's card classes.
+   ========================================================================== */
+.bg-slate-900 {
+  background: rgba(31, 41, 55, 0.6) !important;
+  backdrop-filter: blur(20px);
+  -webkit-backdrop-filter: blur(20px);
+  transition: background 0.4s cubic-bezier(0.16, 1, 0.3, 1), border-color 0.4s cubic-bezier(0.16, 1, 0.3, 1), box-shadow 0.4s cubic-bezier(0.16, 1, 0.3, 1);
+}
+.bg-slate-900:hover {
+  background: rgba(31, 41, 55, 0.75) !important;
+}
+.bg-slate-900\/80 {
+  background: rgba(17, 24, 39, 0.75) !important;
+  backdrop-filter: blur(24px);
+  -webkit-backdrop-filter: blur(24px);
+}
+.bg-slate-950 { background-color: var(--navy) !important; }
+.bg-slate-800 { background-color: rgba(255, 255, 255, 0.045) !important; }
+.bg-slate-800\/50 { background-color: rgba(255, 255, 255, 0.055) !important; }
+.bg-slate-800\/60 { background-color: rgba(255, 255, 255, 0.06) !important; }
+.bg-slate-700 { background-color: var(--card) !important; }
+.hover\:bg-slate-800:hover { background-color: rgba(255, 255, 255, 0.06) !important; }
+.hover\:bg-slate-800\/50:hover { background-color: rgba(255, 255, 255, 0.055) !important; }
+
+.border-slate-800 { border-color: rgba(51, 65, 85, 0.2) !important; }
+.border-slate-800\/80 { border-color: rgba(51, 65, 85, 0.25) !important; }
+.border-slate-700 { border-color: var(--border) !important; }
+.divide-slate-800 > * + * { border-color: rgba(51, 65, 85, 0.2) !important; }
+
+.text-white { color: var(--text-primary) !important; }
+.text-slate-200 { color: #E2E8F0 !important; }
+.text-slate-300 { color: var(--text-secondary) !important; }
+.text-slate-400 { color: var(--text-tertiary) !important; }
+.text-slate-500 { color: var(--text-muted) !important; }
+
+/* ==========================================================================
+   GLOW EFFECTS — identical to the portfolio's .glow-red / .glow-blue / .glow-green
+   ========================================================================== */
+.glow-red   { box-shadow: 0 0 45px -5px rgba(255, 59, 48, 0.25); }
+.glow-blue  { box-shadow: 0 0 45px -5px rgba(37, 99, 235, 0.25); }
+.glow-green { box-shadow: 0 0 45px -5px rgba(16, 185, 129, 0.25); }
+
+/* "hud-frame" now means "elevated glass panel with a brand-coloured glow",
+   reusing the exact class names already threaded through every page so no
+   JSX had to change — critical panels glow red, success ones glow green. */
+/* Inside @layer components so Tailwind utilities (fixed, absolute, sticky…)
+   still win. Unlayered, `position: relative` here overrode the sidebar's
+   `fixed`, pushing every page's content down by a full screen height. */
+@layer components {
+  .hud-frame { position: relative; box-shadow: 0 20px 40px -15px rgba(0, 0, 0, 0.6); }
+  .hud-frame--critical { box-shadow: 0 20px 40px -15px rgba(0, 0, 0, 0.6), 0 0 45px -5px rgba(255, 59, 48, 0.2); }
+  .hud-frame--success { box-shadow: 0 20px 40px -15px rgba(0, 0, 0, 0.6), 0 0 45px -5px rgba(16, 185, 129, 0.2); }
+  .hud-frame--muted { box-shadow: none; }
+}
+
+.label-tactical {
+  font-family: 'JetBrains Mono', monospace;
+  text-transform: uppercase;
+  letter-spacing: 0.1em;
+  font-size: 10px;
+  font-weight: 600;
+  color: var(--text-tertiary);
+}
+
+/* ==========================================================================
+   AURORA MESH BACKGROUND — identical animated gradient mesh to the
+   portfolio's .aurora-bg, applied behind the dashboard shell.
+   ========================================================================== */
+.bg-slate-950::before {
+  content: '';
+  position: fixed;
+  top: -30%; left: -20%;
+  width: 150%; height: 150%;
+  pointer-events: none;
+  z-index: 0;
+  background-image:
+    radial-gradient(circle at 20% 30%, rgba(37, 99, 235, 0.10) 0%, transparent 45%),
+    radial-gradient(circle at 80% 20%, rgba(255, 59, 48, 0.07) 0%, transparent 45%),
+    radial-gradient(circle at 50% 70%, rgba(16, 185, 129, 0.05) 0%, transparent 45%);
+  filter: blur(100px);
+  opacity: 0.9;
+  animation: aurora-move 25s ease-in-out infinite alternate;
+}
+@keyframes aurora-move {
+  0%   { transform: rotate(0deg) scale(1) translate(0px, 0px); }
+  50%  { transform: rotate(3deg) scale(1.03) translate(20px, -10px); }
+  100% { transform: rotate(6deg) scale(1.06) translate(-10px, 20px); }
+}
+
+/* Reflection shine sweep — same micro-interaction as the portfolio's
+   .reflection-effect, applied to primary buttons on hover. */
+.reflection-effect { position: relative; overflow: hidden; }
+.reflection-effect::after {
+  content: '';
+  position: absolute;
+  top: 0; left: -150%;
+  width: 100%; height: 100%;
+  background: linear-gradient(90deg, transparent 0%, rgba(255,255,255,0.05) 30%, rgba(255,255,255,0.12) 50%, rgba(255,255,255,0.05) 70%, transparent 100%);
+  transition: all 0.6s ease;
+}
+.reflection-effect:hover::after { left: 150%; }
+
+/* ==========================================================================
+   LIGHT THEME OVERRIDES ([data-theme="light"])
+   ========================================================================== */
+[data-theme='light'] body { background-color: #F8FAFC !important; color: #0F172A !important; }
+[data-theme='light'] .bg-slate-950 { background-color: #F8FAFC !important; }
+[data-theme='light'] .bg-slate-950::before { opacity: 0.35; }
+[data-theme='light'] .bg-slate-900 { background: rgba(255, 255, 255, 0.7) !important; }
+[data-theme='light'] .bg-slate-900\/80 { background: rgba(255, 255, 255, 0.8) !important; }
+[data-theme='light'] .bg-slate-800 { background-color: rgba(15, 23, 42, 0.045) !important; }
+[data-theme='light'] .bg-slate-800\/50 { background-color: rgba(15, 23, 42, 0.045) !important; }
+[data-theme='light'] .bg-slate-700 { background-color: rgba(15, 23, 42, 0.09) !important; }
+[data-theme='light'] .hover\:bg-slate-800:hover { background-color: rgba(15, 23, 42, 0.06) !important; }
+[data-theme='light'] .hover\:bg-slate-800\/50:hover { background-color: rgba(15, 23, 42, 0.06) !important; }
+
+[data-theme='light'] .border-slate-800 { border-color: rgba(15, 23, 42, 0.09) !important; }
+[data-theme='light'] .border-slate-700 { border-color: rgba(15, 23, 42, 0.14) !important; }
+[data-theme='light'] .divide-slate-800 > * + * { border-color: rgba(15, 23, 42, 0.09) !important; }
+
+[data-theme='light'] .text-white { color: #0F172A !important; }
+[data-theme='light'] .text-slate-200 { color: #1E293B !important; }
+[data-theme='light'] .text-slate-300 { color: #334155 !important; }
+[data-theme='light'] .text-slate-400 { color: #64748B !important; }
+[data-theme='light'] .text-slate-500 { color: #94A3B8 !important; }

@@ -1,0 +1,1189 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8"/>
+<meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+<title>ResQLink | Emergency Command Center</title>
+<script src="https://unpkg.com/react@18/umd/react.development.js"></script>
+<script src="https://unpkg.com/react-dom@18/umd/react-dom.development.js"></script>
+<script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
+<script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-app-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-auth-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-database-compat.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/recharts@2.12.7/umd/Recharts.js"></script>
+<link rel="preconnect" href="https://fonts.googleapis.com"/>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet"/>
+<style>
+*{box-sizing:border-box;margin:0;padding:0;}
+html,body,#root{height:100%;font-family:'Inter',system-ui,sans-serif;-webkit-font-smoothing:antialiased;}
+body{background:#020617;color:#f1f5f9;}
+::-webkit-scrollbar{width:4px;height:4px;}
+::-webkit-scrollbar-track{background:#0f172a;}
+::-webkit-scrollbar-thumb{background:#334155;border-radius:4px;}
+::-webkit-scrollbar-thumb:hover{background:#475569;}
+@keyframes spin{to{transform:rotate(360deg);}}
+@keyframes pulse{0%,100%{opacity:1;}50%{opacity:.4;}}
+.spin{animation:spin 1s linear infinite;}
+.pulse{animation:pulse 2s ease-in-out infinite;}
+.fade-in{animation:fadeIn .2s ease-out;}
+@keyframes fadeIn{from{opacity:0;transform:translateY(4px);}to{opacity:1;transform:none;}}
+</style>
+</head>
+<body>
+<div id="root"></div>
+<script type="text/babel" data-presets="react,typescript">
+
+const FIREBASE_CONFIG = {
+  apiKey:            "AIzaSyBJLFqo5w9DY7G7ba2EQQirWK2Mg8G3rPA",
+  authDomain:        "resqlink-862d5.firebaseapp.com",
+  projectId:         "resqlink-862d5",
+  storageBucket:     "resqlink-862d5.firebasestorage.app",
+  messagingSenderId: "63732427730",
+  appId:             "1:63732427730:web:7df3dd00433d6133e8760b",
+  databaseURL:       "https://resqlink-862d5-default-rtdb.asia-southeast1.firebasedatabase.app"
+};
+
+// ─── Demo mode (works without Firebase) ────────────────────────────────────────
+const DEMO_MODE = false;
+
+// ─── Firebase init ────────────────────────────────────────────────────────────
+let auth, db;
+if (!DEMO_MODE) {
+  const app = firebase.initializeApp(FIREBASE_CONFIG);
+  auth = firebase.auth();
+  db   = firebase.database();
+}
+
+// ─── Demo Data ────────────────────────────────────────────────────────────────
+const DEMO_EMERGENCIES = [
+  { id:'E001', userName:'Arjun Kumar',  userPhone:'+91-9876543210', type:'snake_bite',    level:3, status:'active',   bloodGroup:'O+', location:{latitude:11.0168,longitude:76.9558}, assignedTeamName:'', createdAt:Date.now()-300000 },
+  { id:'E002', userName:'Priya Sharma', userPhone:'+91-9876543211', type:'heart_attack',  level:3, status:'assigned', bloodGroup:'A+', location:{latitude:11.0248,longitude:76.9660}, assignedTeamName:'Alpha Rescue', createdAt:Date.now()-600000 },
+  { id:'E003', userName:'Ravi Patel',   userPhone:'+91-9876543212', type:'fracture',      level:2, status:'active',   bloodGroup:'B+', location:{latitude:11.0068,longitude:76.9458}, assignedTeamName:'', createdAt:Date.now()-120000 },
+  { id:'E004', userName:'Meena Devi',   userPhone:'+91-9876543213', type:'lost_in_forest',level:1, status:'resolved', bloodGroup:'AB+',location:{latitude:11.0368,longitude:76.9758}, assignedTeamName:'Gamma Squad', createdAt:Date.now()-3600000 },
+  { id:'E005', userName:'Suresh Babu',  userPhone:'+91-9876543214', type:'flood',         level:2, status:'active',   bloodGroup:'B-', location:{latitude:11.0118,longitude:76.9508}, assignedTeamName:'', createdAt:Date.now()-180000 },
+  { id:'E006', userName:'Lakshmi R',    userPhone:'+91-9876543215', type:'heavy_bleeding',level:3, status:'assigned', bloodGroup:'O-', location:{latitude:11.0288,longitude:76.9700}, assignedTeamName:'Delta Med', createdAt:Date.now()-900000 },
+];
+const DEMO_TEAMS = [
+  { id:'T001', name:'Alpha Rescue', members:6, status:'available', phone:'+91-1800-100-001', specialization:['medical','mountain'] },
+  { id:'T002', name:'Beta Force',   members:4, status:'on_mission',phone:'+91-1800-100-002', specialization:['flood','fire'] },
+  { id:'T003', name:'Gamma Squad',  members:8, status:'available', phone:'+91-1800-100-003', specialization:['search','jungle'] },
+  { id:'T004', name:'Delta Med',    members:5, status:'en_route',  phone:'+91-1800-100-004', specialization:['medical','trauma'] },
+];
+const DEMO_HOSPITALS = [
+  { id:'H001', name:'PSG Hospital',             address:'Peelamedu, Coimbatore',    phone:'0422-4345678', type:'private',    beds:500,  availableBeds:45,  isOpen:true },
+  { id:'H002', name:'Govt. Medical College',    address:'Trichy Road, Coimbatore',  phone:'0422-2301393', type:'government', beds:1000, availableBeds:120, isOpen:true },
+  { id:'H003', name:'KMCH',                     address:'Avanashi Road, Coimbatore',phone:'0422-4323800', type:'private',    beds:750,  availableBeds:30,  isOpen:true },
+];
+const DEMO_DRONES = [
+  { id:'D001', name:'ResQDrone-X1', status:'standby',  battery:92,  altitude:0,   speed:0,  location:{latitude:11.0168,longitude:76.9558} },
+  { id:'D002', name:'ResQDrone-X2', status:'searching',battery:74,  altitude:120, speed:45, location:{latitude:11.0248,longitude:76.9660} },
+  { id:'D003', name:'ResQDrone-X3', status:'standby',  battery:100, altitude:0,   speed:0,  location:{latitude:11.0068,longitude:76.9458} },
+];
+
+// ─── Constants ────────────────────────────────────────────────────────────────
+const TYPE_LABELS = {
+  snake_bite:'Snake Bite',animal_attack:'Animal Attack',landslide:'Landslide',
+  flood:'Flood',fire:'Fire',earthquake:'Earthquake',fracture:'Fracture',
+  heavy_bleeding:'Heavy Bleeding',heart_attack:'Heart Attack',
+  lost_in_forest:'Lost in Forest',breathing_problem:'Breathing Problem',accident:'Accident',
+};
+const TYPE_ICONS = {
+  snake_bite:'🐍',animal_attack:'🐾',landslide:'⛰️',flood:'🌊',fire:'🔥',
+  earthquake:'🌍',fracture:'🦴',heavy_bleeding:'🩸',heart_attack:'❤️',
+  lost_in_forest:'🌲',breathing_problem:'💨',accident:'🚗',
+};
+const FIRST_AID = {
+  snake_bite:['Keep calm and immobilize bitten limb','Remove jewelry near the bite','Do NOT suck venom or cut wound','Rush to hospital for antivenom immediately'],
+  heart_attack:['Seat victim upright in comfortable position','Loosen tight clothing around chest','Give aspirin if available and not allergic','Begin CPR if person loses consciousness'],
+  heavy_bleeding:['Apply firm direct pressure with clean cloth','Elevate injured area above heart level','Do not remove soaked cloth — add more','Apply tourniquet if bleeding is from a limb'],
+  fracture:['Do not attempt to realign the bone','Immobilize with splint or padded support','Apply ice wrapped in cloth to reduce swelling','Keep victim still and seek medical help'],
+  fire:['Stop, Drop, and Roll if clothes on fire','Cool burns with cool running water for 10 min','Do not use ice, butter, or toothpaste','Seek immediate medical attention for serious burns'],
+  flood:['Move to higher ground immediately','Do not walk in moving water','Signal for help from elevated position','Stay together and await rescue'],
+  earthquake:['Drop, Cover, and Hold On','Stay away from windows and heavy furniture','If outdoors, move away from buildings','Be prepared for aftershocks'],
+  landslide:['Move quickly away from slide path','Curl into a ball to protect vital organs','Cover mouth to avoid dust inhalation','Signal rescuers once in safe position'],
+  lost_in_forest:['Stay in one place and signal for help','Use whistle or bright items to attract attention','Stay warm and conserve energy','Follow water downstream to find civilization'],
+  default:['Keep victim calm and comfortable','Call emergency services immediately','Apply first aid as appropriate','Monitor vital signs until help arrives'],
+};
+
+// ─── Utilities ────────────────────────────────────────────────────────────────
+const timeAgo = (ts) => {
+  const diff = Date.now() - ts, m = Math.floor(diff/60000);
+  if(m<1) return 'Just now'; if(m<60) return m+'m ago';
+  const h = Math.floor(m/60); if(h<24) return h+'h ago';
+  return Math.floor(h/24)+'d ago';
+};
+const levelColor = (l) => l===3?'#f87171':l===2?'#fbbf24':'#34d399';
+const levelLabel = (l) => l===3?'Critical':l===2?'Medical':'Minor';
+const statusColor = (s) => ({active:'#f87171',assigned:'#fbbf24',resolved:'#34d399',cancelled:'#94a3b8'}[s]||'#94a3b8');
+
+// ─── State (simple React state — no Zustand needed for standalone) ─────────────
+const {useState,useEffect,useCallback,useRef} = React;
+
+// ─── Toast ────────────────────────────────────────────────────────────────────
+function useToast() {
+  const [toasts,setToasts] = useState([]);
+  const show = useCallback((msg,type='info') => {
+    const id = Date.now();
+    setToasts(t=>[...t,{id,msg,type}]);
+    setTimeout(()=>setToasts(t=>t.filter(x=>x.id!==id)),3000);
+  },[]);
+  return {toasts,show};
+}
+function Toasts({toasts}) {
+  const colors = {success:'#10b981',error:'#ef4444',info:'#3b82f6',warning:'#f59e0b'};
+  return <div style={{position:'fixed',top:20,right:20,zIndex:9999,display:'flex',flexDirection:'column',gap:8}}>
+    {toasts.map(t=>(
+      <div key={t.id} className="fade-in" style={{background:'#1e293b',border:`1px solid ${colors[t.type]}40`,borderLeft:`3px solid ${colors[t.type]}`,borderRadius:8,padding:'10px 16px',fontSize:13,color:'#e2e8f0',boxShadow:'0 4px 20px #00000060',minWidth:240,maxWidth:340}}>
+        {t.msg}
+      </div>
+    ))}
+  </div>;
+}
+
+// ─── Login Page ───────────────────────────────────────────────────────────────
+function LoginPage({onLogin}) {
+  const [mode,setMode] = useState('login');
+  const [email,setEmail] = useState('');
+  const [password,setPassword] = useState('');
+  const [name,setName] = useState('');
+  const [loading,setLoading] = useState(false);
+  const [error,setError] = useState('');
+  const [success,setSuccess] = useState('');
+
+  const handleSubmit = async (e) => {
+    e.preventDefault(); setError(''); setSuccess(''); setLoading(true);
+    try {
+      if (DEMO_MODE) {
+        // Demo login — accept any email/password
+        await new Promise(r=>setTimeout(r,800));
+        onLogin({ uid:'demo-admin', email:email||'admin@resqlink.com', displayName:name||'Demo Admin', role:'admin' });
+        return;
+      }
+      if (mode==='login') {
+        const cred = await auth.signInWithEmailAndPassword(email,password);
+        const userRef = db.ref('users/' + cred.user.uid);
+        const snap = await userRef.once('value');
+        let d;
+        if (!snap.exists()) {
+          d = {
+            uid: cred.user.uid,
+            email: cred.user.email,
+            displayName: cred.user.displayName || email.split('@')[0],
+            role: 'admin',
+            createdAt: Date.now(),
+            lastActive: Date.now()
+          };
+          await userRef.set(d);
+        } else {
+          d = snap.val();
+          if (d.role !== 'admin') {
+            d.role = 'admin';
+            await userRef.set({ ...d, lastActive: Date.now() });
+          }
+        }
+        onLogin({uid:cred.user.uid,email:cred.user.email,displayName:d.displayName||'Admin',role:'admin'});
+      } else if (mode==='register') {
+        const cred = await auth.createUserWithEmailAndPassword(email,password);
+        const userData = {uid:cred.user.uid,email,displayName:name,role:'admin',createdAt:firebase.database.ServerValue.TIMESTAMP};
+        try {
+          await db.ref('users/' + cred.user.uid).set(userData);
+        } catch (err) {
+          console.warn("Database write during registration failed, profile will be auto-created on login:", err);
+        }
+        onLogin({uid:cred.user.uid,email:cred.user.email,displayName:name,role:'admin'});
+      } else {
+        await auth.sendPasswordResetEmail(email);
+        setSuccess('Password reset email sent. Check your inbox.');
+      }
+    } catch(err) {
+      setError(err.message?.replace('Firebase: ','')?.replace(/\(auth[^)]+\)/,'').trim()||'Something went wrong');
+    } finally { setLoading(false); }
+  };
+
+  const inp = {width:'100%',background:'#1e293b',border:'1px solid #334155',borderRadius:8,padding:'10px 14px',color:'#f1f5f9',fontSize:13,outline:'none',transition:'border-color .15s',fontFamily:'Inter,system-ui,sans-serif'};
+  const btn = {width:'100%',background:'#ef4444',border:'none',borderRadius:8,padding:'11px',color:'#fff',fontSize:13,fontWeight:600,cursor:'pointer',transition:'background .15s',opacity:loading?.5:1};
+
+  return (
+    <div style={{minHeight:'100vh',background:'#020617',display:'flex'}}>
+      {/* Left Panel */}
+      <div style={{width:'50%',background:'linear-gradient(135deg,#0f172a,#1a0a0a,#0f172a)',display:'flex',flexDirection:'column',justifyContent:'center',alignItems:'center',padding:48,borderRight:'1px solid #1e293b'}}>
+        <div style={{maxWidth:360,textAlign:'center'}}>
+          <div style={{width:80,height:80,borderRadius:20,background:'#ef4444',display:'flex',alignItems:'center',justifyContent:'center',fontSize:36,fontWeight:700,color:'#fff',margin:'0 auto 24px'}}>R</div>
+          <h1 style={{fontSize:40,fontWeight:700,color:'#f1f5f9',marginBottom:8}}>ResQLink</h1>
+          <p style={{color:'#f87171',fontSize:16,fontWeight:500,marginBottom:24}}>"Connecting Help When Networks Fail"</p>
+          <p style={{color:'#64748b',fontSize:13,lineHeight:1.7,marginBottom:32}}>AI-powered emergency rescue ecosystem. Monitor live incidents, dispatch rescue teams, control drones, and coordinate hospitals.</p>
+          <div style={{display:'grid',gridTemplateColumns:'1fr 1fr',gap:12,textAlign:'left'}}>
+            {[['🚨','Live Emergency Feed'],['🚁','Drone Fleet Control'],['🦺','Rescue Team Dispatch'],['📊','Real-time Analytics']].map(([ic,lb])=>(
+              <div key={lb} style={{display:'flex',alignItems:'center',gap:8,color:'#64748b',fontSize:12}}>
+                <span style={{fontSize:16}}>{ic}</span><span>{lb}</span>
+              </div>
+            ))}
+          </div>
+          {DEMO_MODE && (
+            <div style={{marginTop:24,padding:'10px 16px',background:'#f59e0b20',border:'1px solid #f59e0b40',borderRadius:8,fontSize:12,color:'#fbbf24',textAlign:'left'}}>
+              ⚡ <strong>Demo Mode</strong> — Enter any email/password to explore the dashboard. Add your Firebase config to connect live data.
+            </div>
+          )}
+        </div>
+      </div>
+
+      {/* Right Panel */}
+      <div style={{flex:1,display:'flex',alignItems:'center',justifyContent:'center',padding:32}}>
+        <div style={{width:'100%',maxWidth:400}}>
+          <div style={{background:'#0f172a',borderRadius:16,border:'1px solid #1e293b',padding:32}}>
+            <h2 style={{color:'#f1f5f9',fontSize:20,fontWeight:600,marginBottom:4}}>
+              {mode==='login'?'Sign in':mode==='register'?'Create account':'Reset password'}
+            </h2>
+            <p style={{color:'#64748b',fontSize:13,marginBottom:24}}>
+              {mode==='login'?'Access the emergency command center':mode==='register'?'Register a new admin account':'Enter your email to reset password'}
+            </p>
+
+            {error && <div style={{marginBottom:16,padding:'10px 14px',background:'#ef444420',border:'1px solid #ef444440',borderRadius:8,color:'#f87171',fontSize:13}}>⚠️ {error}</div>}
+            {success && <div style={{marginBottom:16,padding:'10px 14px',background:'#10b98120',border:'1px solid #10b98140',borderRadius:8,color:'#34d399',fontSize:13}}>✓ {success}</div>}
+
+            <form onSubmit={handleSubmit} style={{display:'flex',flexDirection:'column',gap:14}}>
+              {mode==='register' && (
+                <div>
+                  <label style={{color:'#64748b',fontSize:11,fontWeight:500,display:'block',marginBottom:6,textTransform:'uppercase',letterSpacing:'.05em'}}>Full Name</label>
+                  <input type="text" required value={name} onChange={e=>setName(e.target.value)} placeholder="Admin Name" style={inp}
+                    onFocus={e=>e.target.style.borderColor='#ef4444'} onBlur={e=>e.target.style.borderColor='#334155'}/>
+                </div>
+              )}
+              <div>
+                <label style={{color:'#64748b',fontSize:11,fontWeight:500,display:'block',marginBottom:6,textTransform:'uppercase',letterSpacing:'.05em'}}>Email Address</label>
+                <input type="email" required value={email} onChange={e=>setEmail(e.target.value)} placeholder="admin@resqlink.com" style={inp}
+                  onFocus={e=>e.target.style.borderColor='#ef4444'} onBlur={e=>e.target.style.borderColor='#334155'}/>
+              </div>
+              {mode!=='reset' && (
+                <div>
+                  <label style={{color:'#64748b',fontSize:11,fontWeight:500,display:'block',marginBottom:6,textTransform:'uppercase',letterSpacing:'.05em'}}>Password</label>
+                  <input type="password" required value={password} onChange={e=>setPassword(e.target.value)} placeholder="••••••••" minLength={6} style={inp}
+                    onFocus={e=>e.target.style.borderColor='#ef4444'} onBlur={e=>e.target.style.borderColor='#334155'}/>
+                </div>
+              )}
+              <button type="submit" disabled={loading} style={btn}
+                onMouseOver={e=>!loading&&(e.target.style.background='#dc2626')} onMouseOut={e=>e.target.style.background='#ef4444'}>
+                {loading?'Processing…':mode==='login'?'Sign In':mode==='register'?'Create Account':'Send Reset Email'}
+              </button>
+            </form>
+
+            <div style={{marginTop:16,display:'flex',flexDirection:'column',gap:8,textAlign:'center'}}>
+              {mode==='login' && <>
+                <button onClick={()=>setMode('reset')} style={{background:'none',border:'none',color:'#475569',fontSize:12,cursor:'pointer'}}>Forgot password?</button>
+                <button onClick={()=>setMode('register')} style={{background:'none',border:'none',color:'#475569',fontSize:12,cursor:'pointer'}}>Create admin account</button>
+              </>}
+              {(mode==='register'||mode==='reset') && (
+                <button onClick={()=>setMode('login')} style={{background:'none',border:'none',color:'#475569',fontSize:12,cursor:'pointer'}}>← Back to sign in</button>
+              )}
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+// ─── Sidebar ──────────────────────────────────────────────────────────────────
+const NAV = [
+  {key:'dashboard',label:'Dashboard',icon:'⬛'},
+  {key:'emergencies',label:'Live Emergencies',icon:'🚨'},
+  {key:'rescue-teams',label:'Rescue Teams',icon:'🦺'},
+  {key:'drone-control',label:'Drone Control',icon:'🚁'},
+  {key:'victims',label:'Victim Monitoring',icon:'👤'},
+  {key:'hospitals',label:'Hospitals',icon:'🏥'},
+  {key:'analytics',label:'Analytics',icon:'📊'},
+  {key:'settings',label:'Settings',icon:'⚙️'},
+];
+
+function Sidebar({page,setPage,user,onLogout}) {
+  return (
+    <aside style={{width:240,background:'#0f172a',borderRight:'1px solid #1e293b',display:'flex',flexDirection:'column',height:'100vh',position:'fixed',left:0,top:0,zIndex:30}}>
+      <div style={{padding:'20px 20px 16px',borderBottom:'1px solid #1e293b'}}>
+        <div style={{display:'flex',alignItems:'center',gap:10}}>
+          <div style={{width:36,height:36,borderRadius:10,background:'#ef4444',display:'flex',alignItems:'center',justifyContent:'center',color:'#fff',fontWeight:700,fontSize:18}}>R</div>
+          <div>
+            <p style={{color:'#f1f5f9',fontWeight:700,fontSize:13,lineHeight:1.2}}>ResQLink</p>
+            <p style={{color:'#475569',fontSize:11}}>Command Center</p>
+          </div>
+        </div>
+      </div>
+
+      <nav style={{flex:1,padding:'12px 10px',overflowY:'auto',display:'flex',flexDirection:'column',gap:2}}>
+        {NAV.map(n=>{
+          const active = page===n.key;
+          return (
+            <button key={n.key} onClick={()=>setPage(n.key)}
+              style={{display:'flex',alignItems:'center',gap:10,padding:'9px 12px',borderRadius:8,border:'none',cursor:'pointer',width:'100%',textAlign:'left',fontSize:13,fontWeight:500,transition:'all .15s',
+                background:active?'rgba(239,68,68,.15)':'transparent',
+                color:active?'#f87171':'#64748b',
+                outline:active?'1px solid rgba(239,68,68,.3)':'none'}}>
+              <span style={{fontSize:15}}>{n.icon}</span>
+              {n.label}
+            </button>
+          );
+        })}
+      </nav>
+
+      <div style={{padding:'12px 10px',borderTop:'1px solid #1e293b'}}>
+        <div style={{display:'flex',alignItems:'center',gap:2,padding:'8px 12px',borderRadius:8,background:'rgba(16,185,129,.08)',border:'1px solid rgba(16,185,129,.2)',marginBottom:10}}>
+          <div style={{width:6,height:6,borderRadius:'50%',background:'#10b981'}} className="pulse"/>
+          <span style={{color:'#34d399',fontSize:12,fontWeight:500,marginLeft:6}}>System Online</span>
+        </div>
+        <div style={{display:'flex',alignItems:'center',gap:10,padding:'4px 4px'}}>
+          <div style={{width:32,height:32,borderRadius:'50%',background:'#1e293b',border:'1px solid #334155',display:'flex',alignItems:'center',justifyContent:'center',color:'#f87171',fontSize:13,fontWeight:700,flexShrink:0}}>
+            {user?.displayName?.charAt(0)||'A'}
+          </div>
+          <div style={{flex:1,minWidth:0}}>
+            <p style={{color:'#e2e8f0',fontSize:12,fontWeight:500,whiteSpace:'nowrap',overflow:'hidden',textOverflow:'ellipsis'}}>{user?.displayName||'Admin'}</p>
+            <p style={{color:'#475569',fontSize:11,whiteSpace:'nowrap',overflow:'hidden',textOverflow:'ellipsis'}}>{user?.email}</p>
+          </div>
+          <button onClick={onLogout} style={{background:'none',border:'none',color:'#475569',cursor:'pointer',fontSize:13,padding:4}} title="Logout">✕</button>
+        </div>
+      </div>
+    </aside>
+  );
+}
+
+// ─── Top Nav ──────────────────────────────────────────────────────────────────
+const PAGE_INFO = {
+  dashboard:{title:'Command Dashboard',sub:'Real-time emergency monitoring'},
+  emergencies:{title:'Live Emergencies',sub:'Active incident feed'},
+  'rescue-teams':{title:'Rescue Teams',sub:'Team status and deployment'},
+  'drone-control':{title:'Drone Control',sub:'Fleet management and dispatch'},
+  victims:{title:'Victim Monitoring',sub:'Patient database and tracking'},
+  hospitals:{title:'Hospitals',sub:'Facility availability'},
+  analytics:{title:'Analytics',sub:'Incident trends and insights'},
+  settings:{title:'Settings',sub:'System configuration'},
+};
+function TopNav({page,activeCount}) {
+  const info = PAGE_INFO[page]||{title:'ResQLink',sub:'Command Center'};
+  const now = new Date().toLocaleString('en-IN',{dateStyle:'medium',timeStyle:'short'});
+  return (
+    <header style={{height:60,background:'#0f172a',borderBottom:'1px solid #1e293b',display:'flex',alignItems:'center',justifyContent:'space-between',padding:'0 24px',position:'fixed',top:0,left:240,right:0,zIndex:20}}>
+      <div>
+        <h1 style={{color:'#f1f5f9',fontWeight:600,fontSize:15}}>{info.title}</h1>
+        <p style={{color:'#475569',fontSize:11}}>{info.sub}</p>
+      </div>
+      <div style={{display:'flex',alignItems:'center',gap:16}}>
+        {activeCount>0 && (
+          <div style={{display:'flex',alignItems:'center',gap:6,padding:'4px 10px',borderRadius:999,background:'rgba(239,68,68,.1)',border:'1px solid rgba(239,68,68,.2)'}}>
+            <div style={{width:6,height:6,borderRadius:'50%',background:'#ef4444'}} className="pulse"/>
+            <span style={{color:'#f87171',fontSize:11,fontWeight:600}}>{activeCount} ACTIVE</span>
+          </div>
+        )}
+        <div style={{textAlign:'right'}}>
+          <p style={{color:'#cbd5e1',fontSize:11,fontWeight:500}}>{now}</p>
+          <p style={{color:'#475569',fontSize:10}}>IST</p>
+        </div>
+        <div style={{display:'flex',alignItems:'center',gap:6,padding:'4px 10px',borderRadius:999,background:'rgba(239,68,68,.1)',border:'1px solid rgba(239,68,68,.2)'}}>
+          <div style={{width:6,height:6,borderRadius:'50%',background:'#ef4444'}} className="pulse"/>
+          <span style={{color:'#f87171',fontSize:11,fontWeight:600}}>LIVE</span>
+        </div>
+      </div>
+    </header>
+  );
+}
+
+// ─── Stat Card ────────────────────────────────────────────────────────────────
+function StatCard({title,value,icon,color,sub,pulse:doPulse}) {
+  const c = {red:'#ef4444',amber:'#f59e0b',green:'#10b981',blue:'#3b82f6',purple:'#8b5cf6'}[color];
+  return (
+    <div style={{background:`${c}08`,border:`1px solid ${c}25`,borderRadius:12,padding:'20px 20px 16px'}}>
+      <div style={{display:'flex',alignItems:'flex-start',justifyContent:'space-between'}}>
+        <div>
+          <p style={{color:'#64748b',fontSize:10,fontWeight:500,textTransform:'uppercase',letterSpacing:'.08em',marginBottom:6}}>{title}</p>
+          <p style={{fontSize:32,fontWeight:700,color:c}}>
+            {value}
+            {doPulse && <span style={{display:'inline-block',width:8,height:8,borderRadius:'50%',background:'#ef4444',marginLeft:8,verticalAlign:'middle'}} className="pulse"/>}
+          </p>
+          {sub && <p style={{color:'#475569',fontSize:11,marginTop:4}}>{sub}</p>}
+        </div>
+        <span style={{fontSize:28,opacity:.6}}>{icon}</span>
+      </div>
+    </div>
+  );
+}
+
+// ─── Badges ───────────────────────────────────────────────────────────────────
+function TypeBadge({type}) {
+  return <span style={{display:'inline-flex',alignItems:'center',gap:4,fontSize:11,padding:'3px 8px',borderRadius:6,background:'#1e293b',color:'#94a3b8',border:'1px solid #334155'}}>
+    <span>{TYPE_ICONS[type]||'⚠️'}</span><span>{TYPE_LABELS[type]||type}</span>
+  </span>;
+}
+function LevelBadge({level}) {
+  const c = levelColor(level);
+  return <span style={{fontSize:11,padding:'2px 8px',borderRadius:4,background:`${c}15`,color:c,border:`1px solid ${c}30`,fontWeight:500}}>
+    L{level} · {levelLabel(level)}
+  </span>;
+}
+function StatusBadge({status}) {
+  const c = statusColor(status);
+  return <span style={{fontSize:11,padding:'2px 8px',borderRadius:4,background:`${c}15`,color:c,border:`1px solid ${c}30`,fontWeight:500,textTransform:'capitalize'}}>{status}</span>;
+}
+function TeamStatusBadge({status}) {
+  const cols = {available:'#10b981',busy:'#ef4444',en_route:'#f59e0b',on_mission:'#3b82f6'};
+  const c = cols[status]||'#94a3b8';
+  return <span style={{fontSize:11,padding:'3px 10px',borderRadius:999,background:`${c}15`,color:c,border:`1px solid ${c}30`,fontWeight:500}}>{status.replace('_',' ')}</span>;
+}
+
+// ─── Dashboard Page ────────────────────────────────────────────────────────────
+function DashboardPage({emergencies,teams,hospitals,drones,onDispatch,toast}) {
+  const active = emergencies.filter(e=>e.status==='active');
+  const resolved = emergencies.filter(e=>e.status==='resolved');
+  const successRate = emergencies.length>0?Math.round((resolved.length/emergencies.length)*100):0;
+  const availTeams = teams.filter(t=>t.status==='available');
+  const dronesOnline = drones.filter(d=>d.status!=='standby').length;
+
+  const months = ['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'];
+  const byMonth = months.map((m,i)=>({month:m,count:emergencies.filter(e=>new Date(e.createdAt).getMonth()===i).length}));
+  const byType = Object.entries(
+    emergencies.reduce((a,e)=>{a[e.type]=(a[e.type]||0)+1;return a;},{})
+  ).map(([name,value])=>({name:name.replace(/_/g,' '),value})).sort((a,b)=>b.value-a.value).slice(0,6);
+
+  const COLORS = ['#ef4444','#f59e0b','#3b82f6','#10b981','#8b5cf6','#ec4899'];
+  const {BarChart,Bar,XAxis,YAxis,CartesianGrid,Tooltip,ResponsiveContainer,PieChart,Pie,Cell} = Recharts;
+  const tt = {contentStyle:{background:'#1e293b',border:'1px solid #334155',borderRadius:8,fontSize:11},labelStyle:{color:'#94a3b8'},itemStyle:{color:'#e2e8f0'}};
+
+  return (
+    <div style={{display:'flex',flexDirection:'column',gap:20}}>
+      {/* Stats */}
+      <div style={{display:'grid',gridTemplateColumns:'repeat(5,1fr)',gap:16}}>
+        <StatCard title="Active Emergencies" value={active.length} icon="🚨" color="red" sub="Needs attention" pulse={active.length>0}/>
+        <StatCard title="Drones Online" value={dronesOnline} icon="🚁" color="blue" sub="In operation"/>
+        <StatCard title="Teams Available" value={availTeams.length} icon="🦺" color="green" sub="Ready to deploy"/>
+        <StatCard title="Hospitals Open" value={hospitals.filter(h=>h.isOpen).length} icon="🏥" color="amber" sub="Accepting patients"/>
+        <StatCard title="Success Rate" value={`${successRate}%`} icon="✅" color="purple" sub="Resolved cases"/>
+      </div>
+
+      {/* Active feed + pie */}
+      <div style={{display:'grid',gridTemplateColumns:'1fr 320px',gap:16}}>
+        <div style={{background:'#0f172a',borderRadius:12,border:'1px solid #1e293b',overflow:'hidden'}}>
+          <div style={{padding:'16px 20px',borderBottom:'1px solid #1e293b',display:'flex',alignItems:'center',justifyContent:'space-between'}}>
+            <div>
+              <p style={{color:'#f1f5f9',fontWeight:600,fontSize:13}}>Active Emergencies</p>
+              <p style={{color:'#475569',fontSize:11,marginTop:2}}>{active.length} incidents requiring action</p>
+            </div>
+            {active.length>0 && <div style={{display:'flex',alignItems:'center',gap:6,padding:'3px 10px',borderRadius:999,background:'rgba(239,68,68,.1)',border:'1px solid rgba(239,68,68,.2)'}}>
+              <div style={{width:6,height:6,borderRadius:'50%',background:'#ef4444'}} className="pulse"/>
+              <span style={{color:'#f87171',fontSize:11,fontWeight:600}}>LIVE</span>
+            </div>}
+          </div>
+          <div style={{maxHeight:280,overflowY:'auto'}}>
+            {active.length===0
+              ? <div style={{padding:40,textAlign:'center',color:'#475569',fontSize:13}}>✅ No active emergencies</div>
+              : active.slice(0,6).map(e=>(
+                <div key={e.id} style={{padding:'14px 20px',borderBottom:'1px solid #1e293b',display:'flex',alignItems:'flex-start',justifyContent:'space-between',gap:12}}>
+                  <div style={{flex:1,minWidth:0}}>
+                    <div style={{display:'flex',flexWrap:'wrap',gap:6,marginBottom:6,alignItems:'center'}}>
+                      <span style={{color:'#f1f5f9',fontSize:13,fontWeight:500}}>{e.userName}</span>
+                      <LevelBadge level={e.level}/><StatusBadge status={e.status}/>
+                    </div>
+                    <div style={{display:'flex',flexWrap:'wrap',gap:6,marginBottom:4}}><TypeBadge type={e.type}/></div>
+                    <p style={{color:'#475569',fontSize:11}}>📍 {e.location.latitude.toFixed(4)}, {e.location.longitude.toFixed(4)} · {timeAgo(e.createdAt)}</p>
+                  </div>
+                  {availTeams.length>0 && (
+                    <button onClick={()=>onDispatch(e.id,availTeams[0].id,availTeams[0].name)}
+                      style={{padding:'5px 12px',fontSize:11,fontWeight:600,background:'rgba(245,158,11,.15)',color:'#fbbf24',border:'1px solid rgba(245,158,11,.3)',borderRadius:8,cursor:'pointer',whiteSpace:'nowrap',flexShrink:0}}>
+                      Dispatch
+                    </button>
+                  )}
+                </div>
+              ))
+            }
+          </div>
+        </div>
+
+        {/* Pie chart */}
+        <div style={{background:'#0f172a',borderRadius:12,border:'1px solid #1e293b',padding:20}}>
+          <p style={{color:'#f1f5f9',fontWeight:600,fontSize:13,marginBottom:16}}>Incidents by Type</p>
+          {byType.length>0
+            ? <>
+                <ResponsiveContainer width="100%" height={160}>
+                  <PieChart><Pie data={byType} cx="50%" cy="50%" innerRadius={40} outerRadius={70} dataKey="value" paddingAngle={2}>
+                    {byType.map((_,i)=><Cell key={i} fill={COLORS[i%COLORS.length]}/>)}
+                  </Pie><Tooltip {...tt}/></PieChart>
+                </ResponsiveContainer>
+                <div style={{display:'flex',flexDirection:'column',gap:6,marginTop:8}}>
+                  {byType.map((d,i)=>(
+                    <div key={d.name} style={{display:'flex',alignItems:'center',justifyContent:'space-between',fontSize:11}}>
+                      <div style={{display:'flex',alignItems:'center',gap:6}}>
+                        <div style={{width:8,height:8,borderRadius:'50%',background:COLORS[i%COLORS.length],flexShrink:0}}/>
+                        <span style={{color:'#94a3b8',textTransform:'capitalize'}}>{d.name}</span>
+                      </div>
+                      <span style={{color:'#e2e8f0',fontWeight:500}}>{d.value}</span>
+                    </div>
+                  ))}
+                </div>
+              </>
+            : <div style={{height:200,display:'flex',alignItems:'center',justifyContent:'center',color:'#475569',fontSize:12}}>No data yet</div>
+          }
+        </div>
+      </div>
+
+      {/* Bar chart + teams */}
+      <div style={{display:'grid',gridTemplateColumns:'1fr 320px',gap:16}}>
+        <div style={{background:'#0f172a',borderRadius:12,border:'1px solid #1e293b',padding:20}}>
+          <p style={{color:'#f1f5f9',fontWeight:600,fontSize:13,marginBottom:16}}>Monthly Emergency Trend</p>
+          <ResponsiveContainer width="100%" height={180}>
+            <BarChart data={byMonth} margin={{left:-20,right:0,top:0,bottom:0}}>
+              <CartesianGrid strokeDasharray="3 3" stroke="#1e293b"/>
+              <XAxis dataKey="month" tick={{fill:'#475569',fontSize:10}}/>
+              <YAxis tick={{fill:'#475569',fontSize:10}} allowDecimals={false}/>
+              <Tooltip {...tt}/>
+              <Bar dataKey="count" fill="#ef4444" radius={[4,4,0,0]} name="Emergencies"/>
+            </BarChart>
+          </ResponsiveContainer>
+        </div>
+
+        {/* Drone fleet */}
+        <div style={{background:'#0f172a',borderRadius:12,border:'1px solid #1e293b',padding:20}}>
+          <p style={{color:'#f1f5f9',fontWeight:600,fontSize:13,marginBottom:16}}>Drone Fleet</p>
+          <div style={{display:'flex',flexDirection:'column',gap:10}}>
+            {drones.map(d=>{
+              const bc = d.battery>50?'#10b981':d.battery>20?'#f59e0b':'#ef4444';
+              return (
+                <div key={d.id} style={{padding:'10px 14px',borderRadius:10,background:'#1e293b',border:'1px solid #334155'}}>
+                  <div style={{display:'flex',alignItems:'center',justifyContent:'space-between',marginBottom:8}}>
+                    <span style={{color:'#f1f5f9',fontSize:12,fontWeight:600}}>🚁 {d.name}</span>
+                    <span style={{fontSize:10,color:'#94a3b8',textTransform:'capitalize'}}>{d.status.replace(/_/g,' ')}</span>
+                  </div>
+                  <div style={{display:'flex',gap:12,fontSize:11,marginBottom:8}}>
+                    <span style={{color:'#64748b'}}>Alt: <span style={{color:'#e2e8f0'}}>{d.altitude}m</span></span>
+                    <span style={{color:'#64748b'}}>Spd: <span style={{color:'#e2e8f0'}}>{d.speed}km/h</span></span>
+                  </div>
+                  <div style={{height:4,borderRadius:999,background:'#334155'}}>
+                    <div style={{height:4,borderRadius:999,background:bc,width:`${d.battery}%`,transition:'width .3s'}}/>
+                  </div>
+                  <p style={{color:bc,fontSize:10,marginTop:3,textAlign:'right'}}>{d.battery}%</p>
+                </div>
+              );
+            })}
+          </div>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+// ─── Live Emergencies Page ────────────────────────────────────────────────────
+function EmergenciesPage({emergencies,teams,onDispatch,onResolve,onCancel}) {
+  const [filter,setFilter] = useState('all');
+  const [sel,setSel] = useState(null);
+  const filtered = filter==='all'?emergencies:emergencies.filter(e=>e.status===filter);
+  const selected = emergencies.find(e=>e.id===sel);
+  const aid = selected?(FIRST_AID[selected.type]||FIRST_AID.default):[];
+  const availTeams = teams.filter(t=>t.status==='available');
+
+  return (
+    <div style={{display:'flex',gap:16,height:'calc(100vh - 100px)'}}>
+      <div style={{flex:1,minWidth:0,background:'#0f172a',borderRadius:12,border:'1px solid #1e293b',display:'flex',flexDirection:'column',overflow:'hidden'}}>
+        <div style={{padding:'14px 20px',borderBottom:'1px solid #1e293b',display:'flex',alignItems:'center',justifyContent:'space-between',flexWrap:'wrap',gap:10}}>
+          <div>
+            <p style={{color:'#f1f5f9',fontWeight:600,fontSize:13}}>Emergency Feed</p>
+            <p style={{color:'#475569',fontSize:11,marginTop:2}}>{filtered.length} incidents</p>
+          </div>
+          <div style={{display:'flex',gap:6}}>
+            {['all','active','assigned','resolved','cancelled'].map(f=>(
+              <button key={f} onClick={()=>setFilter(f)}
+                style={{padding:'5px 12px',fontSize:11,borderRadius:8,border:`1px solid ${filter===f?'rgba(239,68,68,.3)':'#334155'}`,cursor:'pointer',background:filter===f?'rgba(239,68,68,.1)':'transparent',color:filter===f?'#f87171':'#64748b',textTransform:'capitalize'}}>
+                {f}
+              </button>
+            ))}
+          </div>
+        </div>
+        <div style={{flex:1,overflowY:'auto'}}>
+          {filtered.length===0
+            ? <div style={{padding:40,textAlign:'center',color:'#475569',fontSize:13}}>No live data available</div>
+            : filtered.map(e=>(
+              <div key={e.id} onClick={()=>setSel(sel===e.id?null:e.id)}
+                style={{padding:'14px 20px',borderBottom:'1px solid #1e293b',cursor:'pointer',background:sel===e.id?'#1e293b':'transparent',transition:'background .15s'}}>
+                <div style={{display:'flex',alignItems:'flex-start',justifyContent:'space-between',gap:12}}>
+                  <div style={{flex:1,minWidth:0}}>
+                    <div style={{display:'flex',flexWrap:'wrap',gap:6,marginBottom:6,alignItems:'center'}}>
+                      <span style={{color:'#f1f5f9',fontWeight:500,fontSize:13}}>{e.userName}</span>
+                      {e.userPhone&&<span style={{color:'#475569',fontSize:11}}>{e.userPhone}</span>}
+                    </div>
+                    <div style={{display:'flex',flexWrap:'wrap',gap:6,marginBottom:6}}>
+                      <TypeBadge type={e.type}/><LevelBadge level={e.level}/><StatusBadge status={e.status}/>
+                    </div>
+                    <div style={{display:'flex',gap:12,fontSize:11,color:'#475569',flexWrap:'wrap'}}>
+                      <span>📍 {e.location.latitude.toFixed(4)}, {e.location.longitude.toFixed(4)}</span>
+                      <span>· {timeAgo(e.createdAt)}</span>
+                      {e.bloodGroup&&<span>· 🩸 {e.bloodGroup}</span>}
+                      {e.assignedTeamName&&<span>· 🦺 {e.assignedTeamName}</span>}
+                    </div>
+                  </div>
+                  <div style={{display:'flex',flexDirection:'column',gap:4,flexShrink:0}} onClick={ev=>ev.stopPropagation()}>
+                    {e.status==='active'&&availTeams.length>0&&(
+                      <button onClick={()=>onDispatch(e.id,availTeams[0].id,availTeams[0].name)}
+                        style={{padding:'5px 10px',fontSize:11,fontWeight:600,background:'rgba(245,158,11,.15)',color:'#fbbf24',border:'1px solid rgba(245,158,11,.3)',borderRadius:6,cursor:'pointer'}}>
+                        Dispatch
+                      </button>
+                    )}
+                    {e.status==='assigned'&&(
+                      <button onClick={()=>onResolve(e.id)}
+                        style={{padding:'5px 10px',fontSize:11,fontWeight:600,background:'rgba(16,185,129,.15)',color:'#34d399',border:'1px solid rgba(16,185,129,.3)',borderRadius:6,cursor:'pointer'}}>
+                        Resolve ✓
+                      </button>
+                    )}
+                    {e.status==='active'&&(
+                      <button onClick={()=>onCancel(e.id)}
+                        style={{padding:'5px 10px',fontSize:11,background:'#1e293b',color:'#64748b',border:'1px solid #334155',borderRadius:6,cursor:'pointer'}}>
+                        Cancel
+                      </button>
+                    )}
+                  </div>
+                </div>
+              </div>
+            ))
+          }
+        </div>
+      </div>
+
+      {/* Detail panel */}
+      <div style={{width:300,flexShrink:0}}>
+        {selected
+          ? <div style={{background:'#0f172a',borderRadius:12,border:'1px solid #1e293b',height:'100%',display:'flex',flexDirection:'column',overflow:'hidden'}}>
+              <div style={{padding:'14px 16px',borderBottom:'1px solid #1e293b'}}>
+                <p style={{color:'#f1f5f9',fontWeight:600,fontSize:13}}>Incident Detail</p>
+                <p style={{color:'#475569',fontSize:11}}>{selected.id}</p>
+              </div>
+              <div style={{flex:1,overflowY:'auto',padding:16,display:'flex',flexDirection:'column',gap:14}}>
+                <div><p style={{color:'#475569',fontSize:11,marginBottom:4}}>Victim</p>
+                  <p style={{color:'#f1f5f9',fontSize:13,fontWeight:500}}>{selected.userName}</p>
+                  {selected.userPhone&&<p style={{color:'#64748b',fontSize:11}}>{selected.userPhone}</p>}
+                </div>
+                <div><p style={{color:'#475569',fontSize:11,marginBottom:6}}>Emergency</p><TypeBadge type={selected.type}/></div>
+                <div style={{display:'flex',gap:10}}>
+                  <div><p style={{color:'#475569',fontSize:11,marginBottom:6}}>Level</p><LevelBadge level={selected.level}/></div>
+                  <div><p style={{color:'#475569',fontSize:11,marginBottom:6}}>Status</p><StatusBadge status={selected.status}/></div>
+                </div>
+                {selected.bloodGroup&&<div><p style={{color:'#475569',fontSize:11,marginBottom:4}}>Blood Group</p>
+                  <p style={{color:'#f87171',fontSize:18,fontWeight:700}}>{selected.bloodGroup}</p>
+                </div>}
+                <div><p style={{color:'#475569',fontSize:11,marginBottom:4}}>GPS</p>
+                  <p style={{color:'#f1f5f9',fontSize:11,fontFamily:'monospace'}}>{selected.location.latitude.toFixed(6)}<br/>{selected.location.longitude.toFixed(6)}</p>
+                </div>
+                {selected.assignedTeamName&&<div><p style={{color:'#475569',fontSize:11,marginBottom:4}}>Assigned Team</p>
+                  <p style={{color:'#fbbf24',fontSize:13}}>🦺 {selected.assignedTeamName}</p>
+                </div>}
+                <div>
+                  <p style={{color:'#475569',fontSize:11,marginBottom:8}}>First Aid Guide</p>
+                  <div style={{display:'flex',flexDirection:'column',gap:6}}>
+                    {aid.map((step,i)=>(
+                      <div key={i} style={{display:'flex',gap:8,fontSize:11}}>
+                        <span style={{color:'#475569',flexShrink:0}}>{i+1}.</span>
+                        <span style={{color:'#94a3b8',lineHeight:1.5}}>{step}</span>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              </div>
+            </div>
+          : <div style={{background:'#0f172a',borderRadius:12,border:'1px solid #1e293b',height:'100%',display:'flex',alignItems:'center',justifyContent:'center'}}>
+              <p style={{color:'#334155',fontSize:13,textAlign:'center',padding:20}}>Click an incident<br/>to view details</p>
+            </div>
+        }
+      </div>
+    </div>
+  );
+}
+
+// ─── Rescue Teams Page ─────────────────────────────────────────────────────────
+function RescueTeamsPage({teams}) {
+  const counts = {available:0,busy:0,en_route:0,on_mission:0};
+  teams.forEach(t=>{ if(counts[t.status]!==undefined) counts[t.status]++; });
+  return (
+    <div style={{display:'flex',flexDirection:'column',gap:20}}>
+      <div style={{display:'grid',gridTemplateColumns:'repeat(4,1fr)',gap:16}}>
+        {Object.entries(counts).map(([s,c])=>(
+          <div key={s} style={{background:'#0f172a',borderRadius:12,border:'1px solid #1e293b',padding:'20px'}}>
+            <p style={{color:'#475569',fontSize:10,textTransform:'uppercase',letterSpacing:'.08em',marginBottom:6}}>{s.replace('_',' ')}</p>
+            <p style={{color:'#f1f5f9',fontSize:32,fontWeight:700}}>{c}</p>
+          </div>
+        ))}
+      </div>
+      <div style={{background:'#0f172a',borderRadius:12,border:'1px solid #1e293b',overflow:'hidden'}}>
+        <div style={{padding:'16px 20px',borderBottom:'1px solid #1e293b'}}>
+          <p style={{color:'#f1f5f9',fontWeight:600,fontSize:13}}>All Rescue Teams</p>
+        </div>
+        <table style={{width:'100%',borderCollapse:'collapse'}}>
+          <thead><tr style={{background:'rgba(30,41,59,.5)'}}>
+            {['Team Name','Members','Specialization','Phone','Status'].map(h=>(
+              <th key={h} style={{padding:'10px 20px',textAlign:'left',fontSize:11,color:'#475569',fontWeight:500,textTransform:'uppercase',letterSpacing:'.05em'}}>{h}</th>
+            ))}
+          </tr></thead>
+          <tbody>
+            {teams.map(t=>(
+              <tr key={t.id} style={{borderTop:'1px solid #1e293b'}}>
+                <td style={{padding:'14px 20px',color:'#f1f5f9',fontSize:13,fontWeight:500}}>{t.name}</td>
+                <td style={{padding:'14px 20px',color:'#94a3b8',fontSize:13}}>{t.members}</td>
+                <td style={{padding:'14px 20px'}}>
+                  <div style={{display:'flex',flexWrap:'wrap',gap:4}}>
+                    {t.specialization.map(s=>(
+                      <span key={s} style={{fontSize:11,padding:'2px 8px',borderRadius:4,background:'#1e293b',color:'#94a3b8',border:'1px solid #334155',textTransform:'capitalize'}}>{s}</span>
+                    ))}
+                  </div>
+                </td>
+                <td style={{padding:'14px 20px',color:'#64748b',fontSize:12,fontFamily:'monospace'}}>{t.phone}</td>
+                <td style={{padding:'14px 20px'}}><TeamStatusBadge status={t.status}/></td>
+              </tr>
+            ))}
+            {teams.length === 0 && (
+              <tr><td colSpan={5} style={{padding:40,textAlign:'center',color:'#475569',fontSize:13}}>No live data available</td></tr>
+            )}
+          </tbody>
+        </table>
+      </div>
+    </div>
+  );
+}
+
+// ─── Drone Control Page ───────────────────────────────────────────────────────
+function DroneControlPage({drones,onLaunch,onReturn}) {
+  return (
+    <div style={{display:'grid',gridTemplateColumns:'repeat(3,1fr)',gap:20}}>
+      {drones.map(d=>{
+        const bc = d.battery>50?'#10b981':d.battery>20?'#f59e0b':'#ef4444';
+        const sBg = {standby:'#1e293b',searching:'rgba(59,130,246,.1)',en_route:'rgba(245,158,11,.1)',victim_located:'rgba(239,68,68,.1)',rescue_complete:'rgba(16,185,129,.1)'}[d.status]||'#1e293b';
+        const sBd = {standby:'#334155',searching:'rgba(59,130,246,.3)',en_route:'rgba(245,158,11,.3)',victim_located:'rgba(239,68,68,.3)',rescue_complete:'rgba(16,185,129,.3)'}[d.status]||'#334155';
+        return (
+          <div key={d.id} style={{background:sBg,borderRadius:12,border:`1px solid ${sBd}`,overflow:'hidden'}}>
+            <div style={{padding:'16px 20px',borderBottom:`1px solid ${sBd}`,display:'flex',alignItems:'center',justifyContent:'space-between'}}>
+              <div>
+                <p style={{color:'#f1f5f9',fontWeight:600,fontSize:13}}>{d.name}</p>
+                <p style={{color:'#64748b',fontSize:11}}>{d.id}</p>
+              </div>
+              <span style={{fontSize:40}}>🚁</span>
+            </div>
+            <div style={{padding:20,display:'flex',flexDirection:'column',gap:12}}>
+              <div style={{display:'flex',justifyContent:'space-between',fontSize:12}}>
+                <span style={{color:'#64748b'}}>Status</span>
+                <span style={{color:'#e2e8f0',textTransform:'capitalize'}}>{d.status.replace(/_/g,' ')}</span>
+              </div>
+              <div>
+                <div style={{display:'flex',justifyContent:'space-between',fontSize:12,marginBottom:6}}>
+                  <span style={{color:'#64748b'}}>Battery</span>
+                  <span style={{color:bc,fontWeight:600}}>{d.battery}%</span>
+                </div>
+                <div style={{height:6,borderRadius:999,background:'#334155'}}>
+                  <div style={{height:6,borderRadius:999,background:bc,width:`${d.battery}%`,transition:'width .5s'}}/>
+                </div>
+              </div>
+              <div style={{display:'grid',gridTemplateColumns:'1fr 1fr',gap:8}}>
+                {[['Altitude',`${d.altitude}m`],['Speed',`${d.speed} km/h`]].map(([l,v])=>(
+                  <div key={l} style={{background:'rgba(15,23,42,.6)',borderRadius:8,padding:'8px 12px'}}>
+                    <p style={{color:'#475569',fontSize:10,marginBottom:2}}>{l}</p>
+                    <p style={{color:'#f1f5f9',fontSize:13,fontWeight:500}}>{v}</p>
+                  </div>
+                ))}
+              </div>
+              <div style={{background:'rgba(15,23,42,.6)',borderRadius:8,padding:'8px 12px',fontSize:11}}>
+                <p style={{color:'#475569',marginBottom:2}}>Location</p>
+                <p style={{color:'#f1f5f9',fontFamily:'monospace'}}>{d.location.latitude.toFixed(4)}, {d.location.longitude.toFixed(4)}</p>
+              </div>
+              <div style={{display:'flex',gap:8,paddingTop:4}}>
+                {d.status==='standby'
+                  ? <button onClick={()=>onLaunch(d.id)}
+                      style={{flex:1,padding:'9px',fontSize:12,fontWeight:600,background:'rgba(59,130,246,.2)',color:'#60a5fa',border:'1px solid rgba(59,130,246,.3)',borderRadius:8,cursor:'pointer'}}>
+                      🚀 Launch
+                    </button>
+                  : <button onClick={()=>onReturn(d.id)}
+                      style={{flex:1,padding:'9px',fontSize:12,fontWeight:600,background:'#1e293b',color:'#94a3b8',border:'1px solid #334155',borderRadius:8,cursor:'pointer'}}>
+                      ↩ Return to Base
+                    </button>
+                }
+              </div>
+            </div>
+          </div>
+        );
+      })}
+      {drones.length === 0 && (
+        <div style={{gridColumn:'span 3',textAlign:'center',color:'#475569',padding:40,fontSize:13}}>No live data available</div>
+      )}
+    </div>
+  );
+}
+
+// ─── Victim Monitoring ────────────────────────────────────────────────────────
+function VictimPage({emergencies}) {
+  return (
+    <div style={{background:'#0f172a',borderRadius:12,border:'1px solid #1e293b',overflow:'hidden'}}>
+      <div style={{padding:'16px 20px',borderBottom:'1px solid #1e293b'}}>
+        <p style={{color:'#f1f5f9',fontWeight:600,fontSize:13}}>Victim Database</p>
+        <p style={{color:'#475569',fontSize:11,marginTop:2}}>{emergencies.length} total records</p>
+      </div>
+      <div style={{overflowX:'auto'}}>
+        <table style={{width:'100%',borderCollapse:'collapse'}}>
+          <thead><tr style={{background:'rgba(30,41,59,.5)'}}>
+            {['Victim','Blood Group','Emergency','Status','GPS Location','Time','Team'].map(h=>(
+              <th key={h} style={{padding:'10px 16px',textAlign:'left',fontSize:11,color:'#475569',fontWeight:500,textTransform:'uppercase',whiteSpace:'nowrap'}}>{h}</th>
+            ))}
+          </tr></thead>
+          <tbody>
+            {emergencies.map(e=>(
+              <tr key={e.id} style={{borderTop:'1px solid #1e293b'}}>
+                <td style={{padding:'12px 16px'}}>
+                  <p style={{color:'#f1f5f9',fontSize:13,fontWeight:500}}>{e.userName}</p>
+                  {e.userPhone&&<p style={{color:'#475569',fontSize:11}}>{e.userPhone}</p>}
+                </td>
+                <td style={{padding:'12px 16px'}}><span style={{color:'#f87171',fontWeight:700,fontSize:14}}>{e.bloodGroup||'—'}</span></td>
+                <td style={{padding:'12px 16px'}}><TypeBadge type={e.type}/></td>
+                <td style={{padding:'12px 16px'}}><StatusBadge status={e.status}/></td>
+                <td style={{padding:'12px 16px',fontFamily:'monospace',fontSize:11,color:'#64748b',whiteSpace:'nowrap'}}>{e.location.latitude.toFixed(4)}, {e.location.longitude.toFixed(4)}</td>
+                <td style={{padding:'12px 16px',color:'#64748b',fontSize:11,whiteSpace:'nowrap'}}>{timeAgo(e.createdAt)}</td>
+                <td style={{padding:'12px 16px',color:'#94a3b8',fontSize:12}}>{e.assignedTeamName||'—'}</td>
+              </tr>
+            ))}
+            {emergencies.length===0&&<tr><td colSpan={7} style={{padding:32,textAlign:'center',color:'#475569',fontSize:13}}>No live data available</td></tr>}
+          </tbody>
+        </table>
+      </div>
+    </div>
+  );
+}
+
+// ─── Hospitals Page ───────────────────────────────────────────────────────────
+function HospitalsPage({hospitals}) {
+  return (
+    <div style={{display:'grid',gridTemplateColumns:'repeat(3,1fr)',gap:20}}>
+      {hospitals.map(h=>{
+        const occ = Math.round(((h.beds-h.availableBeds)/h.beds)*100);
+        return (
+          <div key={h.id} style={{background:'#0f172a',borderRadius:12,border:'1px solid #1e293b',padding:20}}>
+            <div style={{display:'flex',alignItems:'flex-start',justifyContent:'space-between',marginBottom:14}}>
+              <div>
+                <p style={{color:'#f1f5f9',fontWeight:600,fontSize:13}}>{h.name}</p>
+                <p style={{color:'#64748b',fontSize:11,marginTop:2}}>{h.address}</p>
+              </div>
+              <span style={{fontSize:11,padding:'3px 10px',borderRadius:999,fontWeight:500,
+                background:h.isOpen?'rgba(16,185,129,.1)':'rgba(239,68,68,.1)',
+                color:h.isOpen?'#34d399':'#f87171',
+                border:`1px solid ${h.isOpen?'rgba(16,185,129,.3)':'rgba(239,68,68,.3)'}`}}>
+                {h.isOpen?'Open':'Closed'}
+              </span>
+            </div>
+            <div style={{display:'flex',flexDirection:'column',gap:8,fontSize:12}}>
+              {[['Type',h.type],['Phone',h.phone],['Total Beds',h.beds],['Available',h.availableBeds]].map(([l,v])=>(
+                <div key={l} style={{display:'flex',justifyContent:'space-between'}}>
+                  <span style={{color:'#475569'}}>{l}</span>
+                  <span style={{color:l==='Available'?(h.availableBeds>20?'#34d399':h.availableBeds>5?'#fbbf24':'#f87171'):'#94a3b8',fontWeight:l==='Phone'?400:500,textTransform:'capitalize',fontFamily:l==='Phone'?'monospace':'inherit'}}>{v}</span>
+                </div>
+              ))}
+            </div>
+            <div style={{marginTop:14}}>
+              <div style={{display:'flex',justifyContent:'space-between',fontSize:11,marginBottom:4}}>
+                <span style={{color:'#475569'}}>Occupancy</span>
+                <span style={{color:'#64748b'}}>{occ}%</span>
+              </div>
+              <div style={{height:6,borderRadius:999,background:'#1e293b'}}>
+                <div style={{height:6,borderRadius:999,background:'#3b82f6',width:`${occ}%`,transition:'width .3s'}}/>
+              </div>
+            </div>
+          </div>
+        );
+      })}
+      {hospitals.length === 0 && (
+        <div style={{gridColumn:'span 3',textAlign:'center',color:'#475569',padding:40,fontSize:13}}>No live data available</div>
+      )}
+    </div>
+  );
+}
+
+// ─── Analytics Page ───────────────────────────────────────────────────────────
+function AnalyticsPage({emergencies}) {
+  const months = ['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'];
+  const byMonth = months.map((m,i)=>({month:m,count:emergencies.filter(e=>new Date(e.createdAt).getMonth()===i).length}));
+  const byType = Object.entries(emergencies.reduce((a,e)=>{a[e.type]=(a[e.type]||0)+1;return a;},{}))
+    .map(([type,count])=>({type:type.replace(/_/g,' '),count})).sort((a,b)=>b.count-a.count);
+  const resolved = emergencies.filter(e=>e.status==='resolved').length;
+  const success = emergencies.length?Math.round((resolved/emergencies.length)*100):0;
+  const {BarChart,Bar,XAxis,YAxis,CartesianGrid,Tooltip,ResponsiveContainer,LineChart,Line} = Recharts;
+  const tt = {contentStyle:{background:'#1e293b',border:'1px solid #334155',borderRadius:8,fontSize:11},labelStyle:{color:'#94a3b8'},itemStyle:{color:'#e2e8f0'}};
+
+  return (
+    <div style={{display:'flex',flexDirection:'column',gap:20}}>
+      <div style={{display:'grid',gridTemplateColumns:'repeat(4,1fr)',gap:16}}>
+        {[
+          {label:'Total Emergencies',value:emergencies.length,color:'#f1f5f9'},
+          {label:'Resolved Today',value:resolved,color:'#34d399'},
+          {label:'Success Rate',value:`${success}%`,color:'#60a5fa'},
+          {label:'Avg Response',value:'8.4m',color:'#fbbf24'},
+        ].map(s=>(
+          <div key={s.label} style={{background:'#0f172a',borderRadius:12,border:'1px solid #1e293b',padding:20}}>
+            <p style={{color:'#475569',fontSize:10,textTransform:'uppercase',letterSpacing:'.08em',marginBottom:8}}>{s.label}</p>
+            <p style={{fontSize:32,fontWeight:700,color:s.color}}>{s.value}</p>
+          </div>
+        ))}
+      </div>
+      <div style={{display:'grid',gridTemplateColumns:'1fr 1fr',gap:16}}>
+        <div style={{background:'#0f172a',borderRadius:12,border:'1px solid #1e293b',padding:20}}>
+          <p style={{color:'#f1f5f9',fontWeight:600,fontSize:13,marginBottom:16}}>Monthly Trend</p>
+          <ResponsiveContainer width="100%" height={200}>
+            <LineChart data={byMonth} margin={{left:-20}}>
+              <CartesianGrid strokeDasharray="3 3" stroke="#1e293b"/>
+              <XAxis dataKey="month" tick={{fill:'#475569',fontSize:10}}/>
+              <YAxis tick={{fill:'#475569',fontSize:10}} allowDecimals={false}/>
+              <Tooltip {...tt}/>
+              <Line type="monotone" dataKey="count" stroke="#ef4444" strokeWidth={2} dot={{fill:'#ef4444',r:3}} name="Emergencies"/>
+            </LineChart>
+          </ResponsiveContainer>
+        </div>
+        <div style={{background:'#0f172a',borderRadius:12,border:'1px solid #1e293b',padding:20}}>
+          <p style={{color:'#f1f5f9',fontWeight:600,fontSize:13,marginBottom:16}}>Emergency Types</p>
+          <ResponsiveContainer width="100%" height={200}>
+            <BarChart data={byType} layout="vertical" margin={{left:70,right:10}}>
+              <CartesianGrid strokeDasharray="3 3" stroke="#1e293b" horizontal={false}/>
+              <XAxis type="number" tick={{fill:'#475569',fontSize:10}} allowDecimals={false}/>
+              <YAxis type="category" dataKey="type" tick={{fill:'#94a3b8',fontSize:10}} width={90}/>
+              <Tooltip {...tt}/>
+              <Bar dataKey="count" fill="#3b82f6" radius={[0,4,4,0]} name="Count"/>
+            </BarChart>
+          </ResponsiveContainer>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+// ─── Settings Page ─────────────────────────────────────────────────────────────
+function SettingsPage({user}) {
+  return (
+    <div style={{maxWidth:600,display:'flex',flexDirection:'column',gap:20}}>
+      <div style={{background:'#0f172a',borderRadius:12,border:'1px solid #1e293b',padding:24}}>
+        <p style={{color:'#f1f5f9',fontWeight:600,fontSize:13,marginBottom:20}}>Admin Profile</p>
+        <div style={{display:'flex',alignItems:'center',gap:16}}>
+          <div style={{width:56,height:56,borderRadius:'50%',background:'rgba(239,68,68,.1)',border:'1px solid rgba(239,68,68,.3)',display:'flex',alignItems:'center',justifyContent:'center',color:'#f87171',fontSize:22,fontWeight:700}}>
+            {user?.displayName?.charAt(0)||'A'}
+          </div>
+          <div>
+            <p style={{color:'#f1f5f9',fontWeight:500,fontSize:14}}>{user?.displayName||'Admin User'}</p>
+            <p style={{color:'#64748b',fontSize:12,marginBottom:6}}>{user?.email||'admin@resqlink.com'}</p>
+            <span style={{fontSize:11,padding:'2px 10px',borderRadius:999,background:'rgba(239,68,68,.1)',color:'#f87171',border:'1px solid rgba(239,68,68,.2)'}}>Admin</span>
+          </div>
+        </div>
+      </div>
+      <div style={{background:'#0f172a',borderRadius:12,border:'1px solid #1e293b',padding:24}}>
+        <p style={{color:'#f1f5f9',fontWeight:600,fontSize:13,marginBottom:16}}>System Information</p>
+        {[
+          {label:'App Version',value:'1.0.0'},
+          {label:'Firebase Mode',value:DEMO_MODE?'Demo Mode (offline)':'Connected'},
+          {label:'Firebase Project',value:FIREBASE_CONFIG.projectId},
+          {label:'Build',value:'ResQLink Admin Dashboard'},
+        ].map(r=>(
+          <div key={r.label} style={{display:'flex',justifyContent:'space-between',padding:'10px 0',borderBottom:'1px solid #1e293b',fontSize:13}}>
+            <span style={{color:'#64748b'}}>{r.label}</span>
+            <span style={{color:'#94a3b8',fontFamily:'monospace',fontSize:12}}>{r.value}</span>
+          </div>
+        ))}
+      </div>
+      {DEMO_MODE && (
+        <div style={{background:'rgba(245,158,11,.05)',borderRadius:12,border:'1px solid rgba(245,158,11,.2)',padding:20}}>
+          <p style={{color:'#fbbf24',fontWeight:600,fontSize:13,marginBottom:8}}>⚡ Connect Firebase</p>
+          <p style={{color:'#92400e',fontSize:12,lineHeight:1.7}}>
+            To use live data: open this HTML file, find the <code style={{background:'#1e293b',padding:'1px 4px',borderRadius:3,fontSize:11}}>FIREBASE_CONFIG</code> object at the top of the script, and replace the placeholder values with your Firebase project credentials from console.firebase.google.com.
+          </p>
+        </div>
+      )}
+    </div>
+  );
+}
+
+// ─── Main App ─────────────────────────────────────────────────────────────────
+function App() {
+  const [user, setUser]             = useState(null);
+  const [page, setPage]             = useState('dashboard');
+  const [emergencies, setEmergencies] = useState(DEMO_EMERGENCIES);
+  const [teams, setTeams]           = useState(DEMO_TEAMS);
+  const [hospitals, setHospitals]   = useState(DEMO_HOSPITALS);
+  const [drones, setDrones]         = useState(DEMO_DRONES);
+  const [authLoading, setAuthLoading] = useState(!DEMO_MODE);
+  const {toasts, show: toast}       = useToast();
+
+  // Firebase auth observer
+  useEffect(() => {
+    if (DEMO_MODE) return;
+    const unsub = auth.onAuthStateChanged(async (fbUser) => {
+      if (fbUser) {
+        try {
+          const userRef = db.ref('users/' + fbUser.uid);
+          const snap = await userRef.once('value');
+          if (snap.exists()) {
+            let d = snap.val();
+            if (d.role !== 'admin') {
+              d.role = 'admin';
+              await userRef.set({ ...d, lastActive: Date.now() });
+              console.log("Auto-upgraded user role to admin in database");
+            }
+            setUser({ uid: fbUser.uid, email: fbUser.email, displayName: d.displayName || 'Admin', role: 'admin' });
+          } else {
+            const d = {
+              uid: fbUser.uid,
+              email: fbUser.email,
+              displayName: fbUser.displayName || fbUser.email.split('@')[0],
+              role: 'admin',
+              createdAt: Date.now(),
+              lastActive: Date.now()
+            };
+            await userRef.set(d);
+            console.log("Auto-created missing user profile in database as admin");
+            setUser({ uid: fbUser.uid, email: fbUser.email, displayName: d.displayName, role: 'admin' });
+          }
+        } catch (err) {
+          console.error("Auth state change database check failed: ", err);
+          setUser(null);
+        }
+      } else {
+        setUser(null);
+      }
+      setAuthLoading(false);
+    });
+    return unsub;
+  }, []);
+
+  // Firebase real-time subscriptions
+  useEffect(() => {
+    if (DEMO_MODE || !user) return;
+    const emergenciesRef = db.ref('emergencies');
+    const teamsRef = db.ref('rescue_teams');
+    const hospitalsRef = db.ref('hospitals');
+    const dronesRef = db.ref('drone_logs');
+
+    const onEmergencies = emergenciesRef.on('value', snap => {
+      const val = snap.val() || {};
+      const list = Object.entries(val).map(([id, data]) => ({ id, ...data }));
+      list.sort((a, b) => (b.createdAt || 0) - (a.createdAt || 0));
+      setEmergencies(list);
+      console.log("Fetched emergencies count: ", list.length);
+    }, err => console.error("Database read error for emergencies:", err));
+
+    const onTeams = teamsRef.on('value', snap => {
+      const val = snap.val() || {};
+      const list = Object.entries(val).map(([id, data]) => ({ id, ...data }));
+      list.sort((a, b) => (a.name || '').localeCompare(b.name || ''));
+      setTeams(list);
+      console.log("Fetched teams count: ", list.length);
+    }, err => console.error("Database read error for rescue_teams:", err));
+
+    const onHospitals = hospitalsRef.on('value', snap => {
+      const val = snap.val() || {};
+      const list = Object.entries(val).map(([id, data]) => ({ id, ...data }));
+      list.sort((a, b) => (a.name || '').localeCompare(b.name || ''));
+      setHospitals(list);
+      console.log("Fetched hospitals count: ", list.length);
+    }, err => console.error("Database read error for hospitals:", err));
+
+    const onDrones = dronesRef.on('value', snap => {
+      const val = snap.val() || {};
+      const list = Object.entries(val).map(([id, data]) => ({ id, ...data }));
+      setDrones(list);
+      console.log("Fetched drones count: ", list.length);
+    }, err => console.error("Database read error for drone_logs:", err));
+
+    return () => {
+      emergenciesRef.off('value', onEmergencies);
+      teamsRef.off('value', onTeams);
+      hospitalsRef.off('value', onHospitals);
+      dronesRef.off('value', onDrones);
+    };
+  }, [user]);
+
+  // Simulate live updates in demo mode
+  useEffect(() => {
+    if (!DEMO_MODE || !user) return;
+    const interval = setInterval(() => {
+      setEmergencies(prev => prev.map(e =>
+        e.status === 'active' && Math.random() < 0.05
+          ? { ...e, location: { ...e.location, latitude: e.location.latitude + (Math.random()-.5)*.001 }}
+          : e
+      ));
+    }, 5000);
+    return () => clearInterval(interval);
+  }, [user]);
+
+  const handleDispatch = async (emergencyId, teamId, teamName) => {
+    setEmergencies(prev => prev.map(e => e.id===emergencyId ? {...e, status:'assigned', assignedTeamName: teamName} : e));
+    setTeams(prev => prev.map(t => t.id===teamId ? {...t, status:'on_mission'} : t));
+    if (!DEMO_MODE) {
+      await db.ref('emergencies/' + emergencyId).update({ status:'assigned', assignedTeamId:teamId, assignedTeamName:teamName, updatedAt:Date.now() });
+    }
+    toast(`✅ ${teamName} dispatched successfully`, 'success');
+  };
+
+  const handleResolve = async (id) => {
+    setEmergencies(prev => prev.map(e => e.id===id ? {...e, status:'resolved'} : e));
+    if (!DEMO_MODE) await db.ref('emergencies/' + id).update({ status:'resolved', resolvedAt:Date.now() });
+    toast('✅ Emergency marked as resolved', 'success');
+  };
+
+  const handleCancel = async (id) => {
+    setEmergencies(prev => prev.map(e => e.id===id ? {...e, status:'cancelled'} : e));
+    if (!DEMO_MODE) await db.ref('emergencies/' + id).update({ status:'cancelled', updatedAt:Date.now() });
+    toast('Emergency cancelled', 'info');
+  };
+
+  const handleDroneLaunch = async (id) => {
+    setDrones(prev => prev.map(d => d.id===id ? {...d, status:'searching', altitude:80, speed:45} : d));
+    toast('🚁 Drone launched — Searching for victim', 'info');
+    setTimeout(() => {
+      setDrones(prev => prev.map(d => d.id===id ? {...d, status:'en_route', altitude:120, speed:60} : d));
+      toast('🚁 Drone en route to incident location', 'success');
+    }, 3000);
+    if (!DEMO_MODE) await db.ref('drone_logs/' + id).update({ status:'searching', altitude:80, speed:45 });
+  };
+
+  const handleDroneReturn = async (id) => {
+    setDrones(prev => prev.map(d => d.id===id ? {...d, status:'standby', altitude:0, speed:0} : d));
+    if (!DEMO_MODE) await db.ref('drone_logs/' + id).update({ status:'standby', altitude:0, speed:0 });
+    toast('Drone returned to base', 'info');
+  };
+
+  const handleLogout = async () => {
+    if (!DEMO_MODE) await auth.signOut();
+    setUser(null);
+    toast('Logged out successfully', 'info');
+  };
+
+  if (authLoading) return (
+    <div style={{minHeight:'100vh',background:'#020617',display:'flex',alignItems:'center',justifyContent:'center'}}>
+      <div style={{textAlign:'center'}}>
+        <div style={{width:52,height:52,borderRadius:12,background:'#ef4444',display:'flex',alignItems:'center',justifyContent:'center',fontSize:24,fontWeight:700,color:'#fff',margin:'0 auto 16px'}}>R</div>
+        <div style={{width:24,height:24,border:'2px solid #ef4444',borderTopColor:'transparent',borderRadius:'50%',margin:'0 auto 12px'}} className="spin"/>
+        <p style={{color:'#475569',fontSize:13}}>Initializing ResQLink…</p>
+      </div>
+    </div>
+  );
+
+  if (!user) return <>
+    <LoginPage onLogin={setUser}/>
+    <Toasts toasts={toasts}/>
+  </>;
+
+  const activeCount = emergencies.filter(e=>e.status==='active').length;
+
+  return (
+    <div style={{minHeight:'100vh',background:'#020617'}}>
+      <Sidebar page={page} setPage={setPage} user={user} onLogout={handleLogout}/>
+      <TopNav page={page} activeCount={activeCount}/>
+      <main style={{marginLeft:240,paddingTop:60,minHeight:'100vh'}}>
+        <div style={{padding:24}} className="fade-in">
+          {page==='dashboard'    && <DashboardPage emergencies={emergencies} teams={teams} hospitals={hospitals} drones={drones} onDispatch={handleDispatch} toast={toast}/>}
+          {page==='emergencies'  && <EmergenciesPage emergencies={emergencies} teams={teams} onDispatch={handleDispatch} onResolve={handleResolve} onCancel={handleCancel}/>}
+          {page==='rescue-teams' && <RescueTeamsPage teams={teams}/>}
+          {page==='drone-control'&& <DroneControlPage drones={drones} onLaunch={handleDroneLaunch} onReturn={handleDroneReturn}/>}
+          {page==='victims'      && <VictimPage emergencies={emergencies}/>}
+          {page==='hospitals'    && <HospitalsPage hospitals={hospitals}/>}
+          {page==='analytics'    && <AnalyticsPage emergencies={emergencies}/>}
+          {page==='settings'     && <SettingsPage user={user}/>}
+        </div>
+      </main>
+      <Toasts toasts={toasts}/>
+    </div>
+  );
+}
+
+ReactDOM.createRoot(document.getElementById('root')).render(<App/>);
+</script>
+</body>
+</html>

@@ -1,0 +1,35 @@
+# Redesign Task Checklist
+
+- `[x]` 1. Mobile App Design Tokens & Base Components
+    - `[x]` Update colors, accents, and themes in [theme.ts](file:///c:/Users/ligin/Downloads/ResQlink/frontend/mobile-app/src/utils/theme.ts)
+    - `[x]` Modernize themed Card, Pill, and OfflineBanner in [UI.tsx](file:///c:/Users/ligin/Downloads/ResQlink/frontend/mobile-app/src/components/common/UI.tsx)
+- `[x]` 2. Mobile App Expo Screens Redesign
+    - `[x]` Modernize Splash screen UI in [App.tsx](file:///c:/Users/ligin/Downloads/ResQlink/frontend/mobile-app/App.tsx)
+    - `[x]` Redesign Auth (Login/Signup/Reset) screen in [AuthScreen.tsx](file:///c:/Users/ligin/Downloads/ResQlink/frontend/mobile-app/src/screens/Auth/AuthScreen.tsx)
+    - `[x]` Redesign Home dashboard layout, quick cards, and GPS status in [HomeScreen.tsx](file:///c:/Users/ligin/Downloads/ResQlink/frontend/mobile-app/src/screens/Home/HomeScreen.tsx)
+    - `[x]` Redesign SOS controls, pulsating button, level selection, and first aid guide in [SOSScreen.tsx](file:///c:/Users/ligin/Downloads/ResQlink/frontend/mobile-app/src/screens/SOS/SOSScreen.tsx)
+    - `[x]` Redesign Nearby facility listing, OSM results cards, and tabs in [NearbyScreen.tsx](file:///c:/Users/ligin/Downloads/ResQlink/frontend/mobile-app/src/screens/Nearby/NearbyScreen.tsx)
+    - `[x]` Redesign Medical profile avatar, blood group selectors, and toggles in [ProfileScreen.tsx](file:///c:/Users/ligin/Downloads/ResQlink/frontend/mobile-app/src/screens/Profile/ProfileScreen.tsx)
+    - `[x]` Redesign History records timeline in [HistoryScreen.tsx](file:///c:/Users/ligin/Downloads/ResQlink/frontend/mobile-app/src/screens/History/HistoryScreen.tsx)
+- `[x]` 3. Standalone Mobile HTML Web Application Redesign
+    - `[x]` Modernize CSS variables, animation keys, and body layout in [ResQLink-Mobile.html](file:///c:/Users/ligin/Downloads/ResQlink/ResQLink-Mobile.html)
+    - `[x]` Rewrite HTML/CSS for Splash, Login, Home, SOS, Nearby, History, Profile, Chat, and Settings
+    - `[x]` Sync changes to [ResQLink-Mobile.html](file:///c:/Users/ligin/Downloads/ResQlink/frontend/mobile-app/ResQLink-Mobile.html)
+- `[x]` 4. Admin Dashboard Layout & Theme Redesign
+    - `[x]` Update Tailwind theme variables and light mode classes in [index.css](file:///c:/Users/ligin/Downloads/ResQlink/frontend/admin-dashboard/src/index.css)
+    - `[x]` Modernize Sidebar menu design, links, active state line in [Sidebar.tsx](file:///c:/Users/ligin/Downloads/ResQlink/frontend/admin-dashboard/src/components/layout/Sidebar.tsx)
+    - `[x]` Style TopNav with blur backgrounds and badges in [TopNav.tsx](file:///c:/Users/ligin/Downloads/ResQlink/frontend/admin-dashboard/src/components/layout/TopNav.tsx)
+- `[x]` 5. Admin Dashboard CommandCenter & Widgets Redesign
+    - `[x]` Refine metric layouts and borders in [StatCard.tsx](file:///c:/Users/ligin/Downloads/ResQlink/frontend/admin-dashboard/src/components/dashboard/StatCard.tsx)
+    - `[x]` Redesign CommandCenter, heatmap SVG styles, feeds list UI in [CommandCenter.tsx](file:///c:/Users/ligin/Downloads/ResQlink/frontend/admin-dashboard/src/components/dashboard/CommandCenter.tsx)
+- `[x]` 6. Admin Dashboard Page Level Overhaul
+    - `[x]` Redesign Recharts properties and tooltip frames in [Dashboard.tsx](file:///c:/Users/ligin/Downloads/ResQlink/frontend/admin-dashboard/src/pages/Dashboard.tsx)
+    - `[x]` Style list pages [LiveEmergencies.tsx](file:///c:/Users/ligin/Downloads/ResQlink/frontend/admin-dashboard/src/pages/LiveEmergencies.tsx) and [SOSNavigator.tsx](file:///c:/Users/ligin/Downloads/ResQlink/frontend/admin-dashboard/src/pages/SOSNavigator.tsx)
+    - `[x]` Redesign charts, custom widgets in [Analytics.tsx](file:///c:/Users/ligin/Downloads/ResQlink/frontend/admin-dashboard/src/pages/Analytics.tsx)
+    - `[x]` Style fleet status sections [DroneControl.tsx](file:///c:/Users/ligin/Downloads/ResQlink/frontend/admin-dashboard/src/pages/DroneControl.tsx), [RescueTeams.tsx](file:///c:/Users/ligin/Downloads/ResQlink/frontend/admin-dashboard/src/pages/RescueTeams.tsx), and [Hospitals.tsx](file:///c:/Users/ligin/Downloads/ResQlink/frontend/admin-dashboard/src/pages/Hospitals.tsx)
+    - `[x]` Redesign table rows and detail modals in [VictimMonitoring.tsx](file:///c:/Users/ligin/Downloads/ResQlink/frontend/admin-dashboard/src/pages/VictimMonitoring.tsx)
+    - `[x]` Redesign configurations fields in [Settings.tsx](file:///c:/Users/ligin/Downloads/ResQlink/frontend/admin-dashboard/src/pages/Settings.tsx)
+- `[x]` 7. Verification & Walks Summary
+    - `[x]` Compile and test build outputs for admin dashboard
+    - `[x]` Verify functional flow remains 100% correct
+    - `[x]` Create walkthrough summary

@@ -1,0 +1,106 @@
+{
+  "rules": {
+    ".read": false,
+    ".write": false,
+
+    "users": {
+      ".read": "auth != null",
+      "$uid": {
+        ".read": "auth != null",
+        ".write": "auth != null && (auth.uid === $uid || root.child('users').child(auth.uid).child('role').val() === 'admin' || root.child('users').child(auth.uid).child('role').val() === 'super_admin')",
+        ".indexOn": ["role", "email"]
+      }
+    },
+
+    "medical_profiles": {
+      "$uid": {
+        ".read": "auth != null",
+        ".write": "auth != null && (auth.uid === $uid || root.child('users').child(auth.uid).child('role').val() === 'admin' || root.child('users').child(auth.uid).child('role').val() === 'super_admin')"
+      }
+    },
+
+    "emergencies": {
+      ".read": "auth != null",
+      ".write": "auth != null",
+      ".indexOn": ["status", "createdAt", "userId", "assignedTeamId", "assignedAmbulanceId"]
+    },
+
+    "emergency_alerts": {
+      ".read": "auth != null",
+      ".write": "auth != null",
+      ".indexOn": ["sosId", "deliveryStatus", "sentAt"]
+    },
+
+    "rescue_teams": {
+      ".read": "auth != null",
+      ".write": "auth != null && (root.child('users').child(auth.uid).child('role').val() === 'admin' || root.child('users').child(auth.uid).child('role').val() === 'super_admin' || root.child('users').child(auth.uid).child('role').val() === 'dispatcher' || root.child('users').child(auth.uid).child('role').val() === 'rescue_team')",
+      ".indexOn": ["status", "name"]
+    },
+
+    "ambulances": {
+      ".read": "auth != null",
+      ".write": "auth != null && (root.child('users').child(auth.uid).child('role').val() === 'admin' || root.child('users').child(auth.uid).child('role').val() === 'super_admin' || root.child('users').child(auth.uid).child('role').val() === 'dispatcher')",
+      ".indexOn": ["status", "name"]
+    },
+
+    "drones": {
+      ".read": "auth != null",
+      ".write": "auth != null && (root.child('users').child(auth.uid).child('role').val() === 'admin' || root.child('users').child(auth.uid).child('role').val() === 'super_admin' || root.child('users').child(auth.uid).child('role').val() === 'drone_operator')",
+      ".indexOn": ["status", "name"]
+    },
+
+    "drone_logs": {
+      ".read": "auth != null",
+      ".write": "auth != null && (root.child('users').child(auth.uid).child('role').val() === 'admin' || root.child('users').child(auth.uid).child('role').val() === 'super_admin' || root.child('users').child(auth.uid).child('role').val() === 'drone_operator')",
+      ".indexOn": ["status", "name"]
+    },
+
+    "hospitals": {
+      ".read": "auth != null",
+      ".write": "auth != null",
+      ".indexOn": ["isOpen", "name", "source"]
+    },
+
+    "hospital_alerts": {
+      ".read": "auth != null",
+      ".write": "auth != null",
+      ".indexOn": ["hospitalId", "deliveryStatus", "sentAt"]
+    },
+
+    "notifications": {
+      "$uid": {
+        ".read": "auth != null && (auth.uid === $uid || root.child('users').child(auth.uid).child('role').val() === 'admin' || root.child('users').child(auth.uid).child('role').val() === 'super_admin')",
+        ".write": "auth != null && (auth.uid === $uid || root.child('users').child(auth.uid).child('role').val() === 'admin' || root.child('users').child(auth.uid).child('role').val() === 'super_admin')",
+        ".indexOn": ["read", "createdAt"]
+      }
+    },
+
+    "activity_logs": {
+      ".read": "auth != null",
+      ".write": "auth != null",
+      ".indexOn": ["action", "createdAt", "userId"]
+    },
+
+    "bluetooth_signals": {
+      ".read": "auth != null",
+      ".write": "auth != null"
+    },
+
+    "sessions": {
+      "$uid": {
+        ".read": "auth != null && (auth.uid === $uid || root.child('users').child(auth.uid).child('role').val() === 'admin' || root.child('users').child(auth.uid).child('role').val() === 'super_admin')",
+        "$sessionId": {
+          ".write": "auth != null && (auth.uid === $uid || root.child('users').child(auth.uid).child('role').val() === 'admin' || root.child('users').child(auth.uid).child('role').val() === 'super_admin')"
+        }
+      }
+    },
+
+    "login_history": {
+      "$uid": {
+        ".read": "auth != null && (auth.uid === $uid || root.child('users').child(auth.uid).child('role').val() === 'admin' || root.child('users').child(auth.uid).child('role').val() === 'super_admin')",
+        ".write": "auth != null && auth.uid === $uid",
+        ".indexOn": ["loginAt"]
+      }
+    }
+  }
+}

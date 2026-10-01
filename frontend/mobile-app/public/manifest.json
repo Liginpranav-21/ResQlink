@@ -1,0 +1,17 @@
+{
+  "name": "ResQLink — Emergency Rescue",
+  "short_name": "ResQLink",
+  "description": "Connecting Help When Networks Fail",
+  "start_url": "/",
+  "scope": "/",
+  "display": "standalone",
+  "orientation": "portrait",
+  "background_color": "#0A0B10",
+  "theme_color": "#0A0B10",
+  "categories": ["medical", "utilities", "health"],
+  "icons": [
+    { "src": "/icon-192.png", "sizes": "192x192", "type": "image/png", "purpose": "any" },
+    { "src": "/icon-512.png", "sizes": "512x512", "type": "image/png", "purpose": "any" },
+    { "src": "/icon-maskable-512.png", "sizes": "512x512", "type": "image/png", "purpose": "maskable" }
+  ]
+}

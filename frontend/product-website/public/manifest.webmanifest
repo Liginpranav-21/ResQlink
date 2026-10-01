@@ -1,0 +1,17 @@
+{
+  "name": "ResQLink Emergency Ecosystem",
+  "short_name": "ResQLink",
+  "description": "AI-Powered Emergency Rescue Ecosystem connecting help when networks fail.",
+  "start_url": "/",
+  "display": "standalone",
+  "background_color": "#0B1220",
+  "theme_color": "#FF3B30",
+  "icons": [
+    {
+      "src": "/favicon.svg",
+      "sizes": "any",
+      "type": "image/svg+xml",
+      "purpose": "any maskable"
+    }
+  ]
+}
